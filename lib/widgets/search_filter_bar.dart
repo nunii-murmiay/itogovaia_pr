@@ -140,6 +140,7 @@ class ProductFilterPanel extends StatelessWidget {
                   width: 220,
                   child: DropdownButtonFormField<int?>(
                     value: query.categoryId,
+                    isExpanded: true,
                     decoration: InputDecoration(
                       labelText: 'Категория',
                       isDense: true,
@@ -148,12 +149,12 @@ class ProductFilterPanel extends StatelessWidget {
                     items: [
                       const DropdownMenuItem<int?>(
                         value: null,
-                        child: Text('Все категории'),
+                        child: Text('Все категории', overflow: TextOverflow.ellipsis),
                       ),
                       ...ProductCategory.defaultCategories.map(
                         (c) => DropdownMenuItem<int?>(
                           value: c.id,
-                          child: Text(c.name),
+                          child: Text(c.name, overflow: TextOverflow.ellipsis),
                         ),
                       ),
                     ],
@@ -168,6 +169,7 @@ class ProductFilterPanel extends StatelessWidget {
                   width: 220,
                   child: DropdownButtonFormField<int?>(
                     value: query.supplierId,
+                    isExpanded: true,
                     decoration: InputDecoration(
                       labelText: 'Поставщик',
                       isDense: true,
@@ -176,12 +178,12 @@ class ProductFilterPanel extends StatelessWidget {
                     items: [
                       const DropdownMenuItem<int?>(
                         value: null,
-                        child: Text('Все поставщики'),
+                        child: Text('Все поставщики', overflow: TextOverflow.ellipsis),
                       ),
                       ...seedSuppliers.map(
                         (s) => DropdownMenuItem<int?>(
                           value: s.id,
-                          child: Text(s.name),
+                          child: Text(s.name, overflow: TextOverflow.ellipsis),
                         ),
                       ),
                     ],
@@ -303,6 +305,7 @@ class SupplierFilterPanel extends StatelessWidget {
                   width: 220,
                   child: DropdownButtonFormField<String?>(
                     value: query.country,
+                    isExpanded: true,
                     decoration: InputDecoration(
                       labelText: 'Страна',
                       isDense: true,
@@ -311,12 +314,12 @@ class SupplierFilterPanel extends StatelessWidget {
                     items: [
                       const DropdownMenuItem<String?>(
                         value: null,
-                        child: Text('Все страны'),
+                        child: Text('Все страны', overflow: TextOverflow.ellipsis),
                       ),
                       ...countries.map(
                         (c) => DropdownMenuItem<String?>(
                           value: c,
-                          child: Text(c),
+                          child: Text(c, overflow: TextOverflow.ellipsis),
                         ),
                       ),
                     ],

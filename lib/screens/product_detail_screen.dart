@@ -195,12 +195,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           Expanded(
                             child: DropdownButtonFormField<int>(
                               value: _categoryId,
+                              isExpanded: true,
                               decoration: const InputDecoration(
                                 labelText: 'Категория',
                                 border: OutlineInputBorder(),
                               ),
                               items: ProductCategory.defaultCategories.map((c) {
-                                return DropdownMenuItem(value: c.id, child: Text(c.name));
+                                return DropdownMenuItem(value: c.id, child: Text(c.name, overflow: TextOverflow.ellipsis));
                               }).toList(),
                               onChanged: (val) {
                                 if (val != null) setState(() => _categoryId = val);
@@ -211,12 +212,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           Expanded(
                             child: DropdownButtonFormField<int>(
                               value: _supplierId,
+                              isExpanded: true,
                               decoration: const InputDecoration(
                                 labelText: 'Поставщик',
                                 border: OutlineInputBorder(),
                               ),
                               items: seedSuppliers.map((s) {
-                                return DropdownMenuItem(value: s.id, child: Text(s.name));
+                                return DropdownMenuItem(value: s.id, child: Text(s.name, overflow: TextOverflow.ellipsis));
                               }).toList(),
                               onChanged: (val) {
                                 if (val != null) setState(() => _supplierId = val);
