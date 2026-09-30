@@ -1,8 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../models/brand.dart';
+import '../models/brand_query.dart';
 import '../models/category.dart';
+import '../models/category_query.dart';
+import '../models/customer_query.dart';
+import '../models/loyalty_card.dart';
 import '../models/product_query.dart';
-import '../models/seed_data.dart';
+import '../models/supplier.dart';
 import '../models/supplier_query.dart';
 
 class DebouncedSearchBar extends StatefulWidget {
@@ -47,35 +52,20 @@ class _DebouncedSearchBarState extends State<DebouncedSearchBar> {
     super.dispose();
   }
 
-  void _onTextChange(String value) {
-    _debounceTimer?.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 350), () {
-      widget.onChanged(value);
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return TextField(
       controller: _controller,
-      onChanged: _onTextChange,
+      onChanged: (value) {
+        _debounceTimer?.cancel();
+        _debounceTimer = Timer(const Duration(milliseconds: 350), () {
+          widget.onChanged(value);
+        });
+      },
       decoration: InputDecoration(
         hintText: widget.hintText,
         prefixIcon: const Icon(Icons.search),
-        suffixIcon: _controller.text.isNotEmpty
-            ? IconButton(
-                icon: const Icon(Icons.clear),
-                onPressed: () {
-                  _controller.clear();
-                  widget.onChanged('');
-                },
-              )
-            : null,
         filled: true,
-        fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -87,162 +77,77 @@ class _DebouncedSearchBarState extends State<DebouncedSearchBar> {
 
 class ProductFilterPanel extends StatelessWidget {
   final ProductQuery query;
+  final List<Supplier> suppliers;
+  final List<ProductCategory> categories;
+  final List<Brand> brands;
   final ValueChanged<ProductQuery> onQueryChanged;
   final VoidCallback onReset;
 
   const ProductFilterPanel({
     super.key,
     required this.query,
+    required this.suppliers,
+    required this.categories,
+    required this.brands,
     required this.onQueryChanged,
     required this.onReset,
   });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Card(
-      elevation: 0,
-      color: theme.colorScheme.surfaceContainerLow,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
-      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Wrap(
+          spacing: 16,
+          runSpacing: 12,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            Row(
-              children: [
-                Icon(Icons.filter_list, color: theme.colorScheme.primary, size: 20),
-                const SizedBox(width: 8),
-                const Text(
-                  'Фильтры поиска',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                const Spacer(),
-                TextButton.icon(
-                  onPressed: onReset,
-                  icon: const Icon(Icons.refresh, size: 16),
-                  label: const Text('Сбросить все'),
-                ),
-              ],
+            SizedBox(
+              width: 200,
+              child: DropdownButtonFormField<int?>(
+                value: query.categoryId,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Категория', isDense: true, border: OutlineInputBorder()),
+                items: [
+                  const DropdownMenuItem(value: null, child: Text('Все')),
+                  ...categories.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name, overflow: TextOverflow.ellipsis))),
+                ],
+                onChanged: (v) => onQueryChanged(query.copyWith(categoryId: v)),
+              ),
             ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 16,
-              runSpacing: 12,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                // 1. Категория
-                SizedBox(
-                  width: 220,
-                  child: DropdownButtonFormField<int?>(
-                    value: query.categoryId,
-                    isExpanded: true,
-                    decoration: InputDecoration(
-                      labelText: 'Категория',
-                      isDense: true,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                    items: [
-                      const DropdownMenuItem<int?>(
-                        value: null,
-                        child: Text('Все категории', overflow: TextOverflow.ellipsis),
-                      ),
-                      ...ProductCategory.defaultCategories.map(
-                        (c) => DropdownMenuItem<int?>(
-                          value: c.id,
-                          child: Text(c.name, overflow: TextOverflow.ellipsis),
-                        ),
-                      ),
-                    ],
-                    onChanged: (val) {
-                      onQueryChanged(query.copyWith(categoryId: val));
-                    },
-                  ),
-                ),
-
-                // 2. Поставщик / Бренд
-                SizedBox(
-                  width: 220,
-                  child: DropdownButtonFormField<int?>(
-                    value: query.supplierId,
-                    isExpanded: true,
-                    decoration: InputDecoration(
-                      labelText: 'Поставщик',
-                      isDense: true,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                    items: [
-                      const DropdownMenuItem<int?>(
-                        value: null,
-                        child: Text('Все поставщики', overflow: TextOverflow.ellipsis),
-                      ),
-                      ...seedSuppliers.map(
-                        (s) => DropdownMenuItem<int?>(
-                          value: s.id,
-                          child: Text(s.name, overflow: TextOverflow.ellipsis),
-                        ),
-                      ),
-                    ],
-                    onChanged: (val) {
-                      onQueryChanged(query.copyWith(supplierId: val));
-                    },
-                  ),
-                ),
-
-                // 3. Диапазон цен (от)
-                SizedBox(
-                  width: 140,
-                  child: TextFormField(
-                    initialValue: query.priceFrom?.toString() ?? '',
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Цена от, ₽',
-                      isDense: true,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                    onChanged: (val) {
-                      final parsed = double.tryParse(val);
-                      onQueryChanged(query.copyWith(priceFrom: parsed));
-                    },
-                  ),
-                ),
-
-                // 3. Диапазон цен (до)
-                SizedBox(
-                  width: 140,
-                  child: TextFormField(
-                    initialValue: query.priceTo?.toString() ?? '',
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Цена до, ₽',
-                      isDense: true,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                    onChanged: (val) {
-                      final parsed = double.tryParse(val);
-                      onQueryChanged(query.copyWith(priceTo: parsed));
-                    },
-                  ),
-                ),
-
-                // Переключатель "Показывать удаленные"
-                FilterChip(
-                  avatar: Icon(
-                    query.includeDeleted ? Icons.visibility : Icons.visibility_off,
-                    size: 16,
-                  ),
-                  label: const Text('Удаленные записи'),
-                  selected: query.includeDeleted,
-                  onSelected: (val) {
-                    onQueryChanged(query.copyWith(includeDeleted: val));
-                  },
-                ),
-              ],
+            SizedBox(
+              width: 200,
+              child: DropdownButtonFormField<int?>(
+                value: query.brandId,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Бренд', isDense: true, border: OutlineInputBorder()),
+                items: [
+                  const DropdownMenuItem(value: null, child: Text('Все')),
+                  ...brands.map((b) => DropdownMenuItem(value: b.id, child: Text(b.name, overflow: TextOverflow.ellipsis))),
+                ],
+                onChanged: (v) => onQueryChanged(query.copyWith(brandId: v)),
+              ),
             ),
+            SizedBox(
+              width: 200,
+              child: DropdownButtonFormField<int?>(
+                value: query.supplierId,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Поставщик', isDense: true, border: OutlineInputBorder()),
+                items: [
+                  const DropdownMenuItem(value: null, child: Text('Все')),
+                  ...suppliers.map((s) => DropdownMenuItem(value: s.id, child: Text(s.name, overflow: TextOverflow.ellipsis))),
+                ],
+                onChanged: (v) => onQueryChanged(query.copyWith(supplierId: v)),
+              ),
+            ),
+            FilterChip(
+              label: const Text('Удалённые'),
+              selected: query.includeDeleted,
+              onSelected: (v) => onQueryChanged(query.copyWith(includeDeleted: v)),
+            ),
+            TextButton(onPressed: onReset, child: const Text('Сбросить')),
           ],
         ),
       ),
@@ -264,83 +169,144 @@ class SupplierFilterPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final countries = ['Франция', 'США', 'Германия', 'Италия', 'Нидерланды', 'Россия', 'Бельгия'];
-
+    const countries = ['Франция', 'США', 'Германия', 'Италия', 'Нидерланды', 'Россия', 'Бельгия'];
     return Card(
-      elevation: 0,
-      color: theme.colorScheme.surfaceContainerLow,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
-      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Wrap(
+          spacing: 16,
+          runSpacing: 12,
           children: [
-            Row(
-              children: [
-                Icon(Icons.filter_list, color: theme.colorScheme.primary, size: 20),
-                const SizedBox(width: 8),
-                const Text(
-                  'Фильтры поставщиков',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                const Spacer(),
-                TextButton.icon(
-                  onPressed: onReset,
-                  icon: const Icon(Icons.refresh, size: 16),
-                  label: const Text('Сбросить все'),
-                ),
-              ],
+            SizedBox(
+              width: 220,
+              child: DropdownButtonFormField<String?>(
+                value: query.country,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Страна', isDense: true, border: OutlineInputBorder()),
+                items: [
+                  const DropdownMenuItem(value: null, child: Text('Все страны')),
+                  ...countries.map((c) => DropdownMenuItem(value: c, child: Text(c))),
+                ],
+                onChanged: (v) => onQueryChanged(query.copyWith(country: v)),
+              ),
             ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 16,
-              runSpacing: 12,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                SizedBox(
-                  width: 220,
-                  child: DropdownButtonFormField<String?>(
-                    value: query.country,
-                    isExpanded: true,
-                    decoration: InputDecoration(
-                      labelText: 'Страна',
-                      isDense: true,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                    items: [
-                      const DropdownMenuItem<String?>(
-                        value: null,
-                        child: Text('Все страны', overflow: TextOverflow.ellipsis),
-                      ),
-                      ...countries.map(
-                        (c) => DropdownMenuItem<String?>(
-                          value: c,
-                          child: Text(c, overflow: TextOverflow.ellipsis),
-                        ),
-                      ),
-                    ],
-                    onChanged: (val) {
-                      onQueryChanged(query.copyWith(country: val));
-                    },
-                  ),
-                ),
-                FilterChip(
-                  avatar: Icon(
-                    query.includeDeleted ? Icons.visibility : Icons.visibility_off,
-                    size: 16,
-                  ),
-                  label: const Text('Удаленные поставщики'),
-                  selected: query.includeDeleted,
-                  onSelected: (val) {
-                    onQueryChanged(query.copyWith(includeDeleted: val));
-                  },
-                ),
-              ],
+            FilterChip(
+              label: const Text('Удалённые'),
+              selected: query.includeDeleted,
+              onSelected: (v) => onQueryChanged(query.copyWith(includeDeleted: v)),
             ),
+            TextButton(onPressed: onReset, child: const Text('Сбросить')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class BrandFilterPanel extends StatelessWidget {
+  final BrandQuery query;
+  final ValueChanged<BrandQuery> onQueryChanged;
+  final VoidCallback onReset;
+
+  const BrandFilterPanel({
+    super.key,
+    required this.query,
+    required this.onQueryChanged,
+    required this.onReset,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Wrap(
+          spacing: 16,
+          children: [
+            FilterChip(
+              label: const Text('Удалённые'),
+              selected: query.includeDeleted,
+              onSelected: (v) => onQueryChanged(query.copyWith(includeDeleted: v)),
+            ),
+            TextButton(onPressed: onReset, child: const Text('Сбросить')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class CategoryFilterPanel extends StatelessWidget {
+  final CategoryQuery query;
+  final ValueChanged<CategoryQuery> onQueryChanged;
+  final VoidCallback onReset;
+
+  const CategoryFilterPanel({
+    super.key,
+    required this.query,
+    required this.onQueryChanged,
+    required this.onReset,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Wrap(
+          spacing: 16,
+          children: [
+            FilterChip(
+              label: const Text('Удалённые'),
+              selected: query.includeDeleted,
+              onSelected: (v) => onQueryChanged(query.copyWith(includeDeleted: v)),
+            ),
+            TextButton(onPressed: onReset, child: const Text('Сбросить')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class CustomerFilterPanel extends StatelessWidget {
+  final CustomerQuery query;
+  final ValueChanged<CustomerQuery> onQueryChanged;
+  final VoidCallback onReset;
+
+  const CustomerFilterPanel({
+    super.key,
+    required this.query,
+    required this.onQueryChanged,
+    required this.onReset,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Wrap(
+          spacing: 16,
+          children: [
+            SizedBox(
+              width: 180,
+              child: DropdownButtonFormField<String?>(
+                value: query.cardLevel,
+                decoration: const InputDecoration(labelText: 'Уровень карты', isDense: true, border: OutlineInputBorder()),
+                items: [
+                  const DropdownMenuItem(value: null, child: Text('Все')),
+                  ...LoyaltyCard.levels.map((l) => DropdownMenuItem(value: l, child: Text(l))),
+                ],
+                onChanged: (v) => onQueryChanged(query.copyWith(cardLevel: v)),
+              ),
+            ),
+            FilterChip(
+              label: const Text('Удалённые'),
+              selected: query.includeDeleted,
+              onSelected: (v) => onQueryChanged(query.copyWith(includeDeleted: v)),
+            ),
+            TextButton(onPressed: onReset, child: const Text('Сбросить')),
           ],
         ),
       ),

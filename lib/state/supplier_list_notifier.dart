@@ -1,109 +1,34 @@
-import 'package:flutter/foundation.dart';
 import '../models/page_result.dart';
 import '../models/supplier.dart';
 import '../models/supplier_query.dart';
 import '../repositories/supplier_repository.dart';
-import 'product_list_notifier.dart';
+import 'entity_list_notifier.dart';
 
-class SupplierListNotifier extends ChangeNotifier {
+export 'entity_list_notifier.dart' show LoadStatus;
+
+class SupplierListNotifier extends EntityListNotifier<Supplier, SupplierQuery> {
   final SupplierRepository _repository;
 
-  SupplierListNotifier(this._repository);
+  SupplierListNotifier(this._repository) : super(const SupplierQuery());
 
-  SupplierQuery _query = const SupplierQuery();
-  PageResult<Supplier> _result = PageResult.empty();
-  LoadStatus _status = LoadStatus.idle;
-  String? _error;
-  final Set<int> _selected = {};
+  @override
+  Future<PageResult<Supplier>> fetch(SupplierQuery query) => _repository.find(query);
 
-  SupplierQuery get query => _query;
-  PageResult<Supplier> get result => _result;
-  LoadStatus get status => _status;
-  String? get error => _error;
-  Set<int> get selected => Set.unmodifiable(_selected);
-  bool get hasSelection => _selected.isNotEmpty;
+  @override
+  int idOf(Supplier item) => item.id;
 
-  Future<void> load() async {
-    _status = LoadStatus.loading;
-    _error = null;
-    notifyListeners();
+  @override
+  Future<void> doSoftDelete(int id) => _repository.softDelete(id);
 
-    try {
-      _result = await _repository.find(_query);
-      _status = LoadStatus.success;
-    } catch (e) {
-      _error = 'Не удалось загрузить список поставщиков: $e';
-      _status = LoadStatus.error;
-    }
-    notifyListeners();
-  }
+  @override
+  Future<void> doHardDelete(int id) => _repository.hardDelete(id);
 
-  Future<void> applyQuery(SupplierQuery next) async {
-    _query = next;
-    _selected.clear();
-    await load();
-  }
+  @override
+  Future<void> doRestore(int id) => _repository.restore(id);
 
-  void toggleSelection(int id) {
-    if (_selected.contains(id)) {
-      _selected.remove(id);
-    } else {
-      _selected.add(id);
-    }
-    notifyListeners();
-  }
+  @override
+  Future<void> doDeleteMany(List<int> ids) => _repository.deleteMany(ids);
 
-  void toggleSelectAll(List<int> visibleIds) {
-    final allSelected = visibleIds.every(_selected.contains);
-    if (allSelected) {
-      for (final id in visibleIds) {
-        _selected.remove(id);
-      }
-    } else {
-      _selected.addAll(visibleIds);
-    }
-    notifyListeners();
-  }
-
-  void clearSelection() {
-    _selected.clear();
-    notifyListeners();
-  }
-
-  Future<void> deleteSelected() async {
-    if (_selected.isEmpty) return;
-    await _repository.deleteMany(_selected.toList());
-    _selected.clear();
-    await load();
-  }
-
-  Future<void> restoreSelected() async {
-    if (_selected.isEmpty) return;
-    await _repository.restoreMany(_selected.toList());
-    _selected.clear();
-    await load();
-  }
-
-  Future<void> softDelete(int id) async {
-    await _repository.softDelete(id);
-    _selected.remove(id);
-    await load();
-  }
-
-  Future<void> hardDelete(int id) async {
-    await _repository.hardDelete(id);
-    _selected.remove(id);
-    await load();
-  }
-
-  Future<void> restore(int id) async {
-    await _repository.restore(id);
-    await load();
-  }
-
-  void simulateError() {
-    _status = LoadStatus.error;
-    _error = 'Ошибка подключения к базе данных поставщиков (имитация сбоя)';
-    notifyListeners();
-  }
+  @override
+  Future<void> doRestoreMany(List<int> ids) => _repository.restoreMany(ids);
 }

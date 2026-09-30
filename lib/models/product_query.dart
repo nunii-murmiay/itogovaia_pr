@@ -1,6 +1,7 @@
 class ProductQuery {
   final String search;
   final int? categoryId;
+  final int? brandId;
   final int? supplierId;
   final double? priceFrom;
   final double? priceTo;
@@ -13,6 +14,7 @@ class ProductQuery {
   const ProductQuery({
     this.search = '',
     this.categoryId,
+    this.brandId,
     this.supplierId,
     this.priceFrom,
     this.priceTo,
@@ -26,6 +28,7 @@ class ProductQuery {
   ProductQuery copyWith({
     String? search,
     Object? categoryId = _unset,
+    Object? brandId = _unset,
     Object? supplierId = _unset,
     Object? priceFrom = _unset,
     Object? priceTo = _unset,
@@ -38,6 +41,7 @@ class ProductQuery {
     return ProductQuery(
       search: search ?? this.search,
       categoryId: categoryId == _unset ? this.categoryId : categoryId as int?,
+      brandId: brandId == _unset ? this.brandId : brandId as int?,
       supplierId: supplierId == _unset ? this.supplierId : supplierId as int?,
       priceFrom: priceFrom == _unset ? this.priceFrom : priceFrom as double?,
       priceTo: priceTo == _unset ? this.priceTo : priceTo as double?,

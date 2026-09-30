@@ -25,9 +25,13 @@ class PaginationBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final narrow = MediaQuery.sizeOf(context).width < 600;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.symmetric(
+        horizontal: narrow ? 8 : 16,
+        vertical: narrow ? 8 : 12,
+      ),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
@@ -38,20 +42,20 @@ class PaginationBar extends StatelessWidget {
       child: Wrap(
         alignment: WrapAlignment.spaceBetween,
         crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: 16,
-        runSpacing: 12,
+        spacing: 8,
+        runSpacing: 8,
         children: [
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Показывать по:',
+                narrow ? 'По:' : 'Показывать по:',
                 style: TextStyle(
                   color: theme.colorScheme.onSurfaceVariant,
-                  fontSize: 14,
+                  fontSize: narrow ? 12 : 14,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 4),
               DropdownButton<int>(
                 value: size,
                 isDense: true,
@@ -60,7 +64,7 @@ class PaginationBar extends StatelessWidget {
                 items: const [10, 25, 50].map((s) {
                   return DropdownMenuItem<int>(
                     value: s,
-                    child: Text('$s шт.'),
+                    child: Text('$s'),
                   );
                 }).toList(),
                 onChanged: (newSize) {
@@ -71,28 +75,32 @@ class PaginationBar extends StatelessWidget {
           ),
           Text(
             totalItems > 0
-                ? 'Страница $page из $totalPages (всего $totalItems записей)'
-                : 'Записи отсутствуют',
+                ? (narrow
+                    ? '$page / $totalPages · $totalItems'
+                    : 'Страница $page из $totalPages (всего $totalItems записей)')
+                : 'Нет записей',
             style: TextStyle(
               fontWeight: FontWeight.w500,
+              fontSize: narrow ? 12 : 14,
               color: theme.colorScheme.onSurface,
             ),
           ),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (!narrow)
+                IconButton(
+                  tooltip: 'На первую',
+                  icon: const Icon(Icons.first_page),
+                  onPressed: hasPrevious ? () => onPageChanged(1) : null,
+                ),
               IconButton(
-                tooltip: 'На первую страницу',
-                icon: const Icon(Icons.first_page),
-                onPressed: hasPrevious ? () => onPageChanged(1) : null,
-              ),
-              IconButton(
-                tooltip: 'Предыдущая страница',
+                tooltip: 'Назад',
                 icon: const Icon(Icons.chevron_left),
                 onPressed: hasPrevious ? () => onPageChanged(page - 1) : null,
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.primaryContainer,
                   borderRadius: BorderRadius.circular(8),
@@ -106,15 +114,16 @@ class PaginationBar extends StatelessWidget {
                 ),
               ),
               IconButton(
-                tooltip: 'Следующая страница',
+                tooltip: 'Вперёд',
                 icon: const Icon(Icons.chevron_right),
                 onPressed: hasNext ? () => onPageChanged(page + 1) : null,
               ),
-              IconButton(
-                tooltip: 'На последнюю страницу',
-                icon: const Icon(Icons.last_page),
-                onPressed: hasNext ? () => onPageChanged(totalPages) : null,
-              ),
+              if (!narrow)
+                IconButton(
+                  tooltip: 'В конец',
+                  icon: const Icon(Icons.last_page),
+                  onPressed: hasNext ? () => onPageChanged(totalPages) : null,
+                ),
             ],
           ),
         ],

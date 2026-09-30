@@ -57,6 +57,7 @@ class EntityTable<T> extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: LayoutBuilder(
         builder: (context, constraints) {
+          final narrow = constraints.maxWidth < 700;
           return SingleChildScrollView(
             scrollDirection: Axis.vertical,
             child: SingleChildScrollView(
@@ -67,10 +68,10 @@ class EntityTable<T> extends StatelessWidget {
                   headingRowColor: WidgetStateProperty.all(
                     theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                   ),
-                  dataRowMinHeight: 52,
-                  dataRowMaxHeight: 64,
-                  horizontalMargin: 16,
-                  columnSpacing: 24,
+                  dataRowMinHeight: narrow ? 44 : 52,
+                  dataRowMaxHeight: narrow ? 56 : 64,
+                  horizontalMargin: narrow ? 8 : 16,
+                  columnSpacing: narrow ? 12 : 24,
                   showCheckboxColumn: false,
                   columns: [
                     if (onToggleSelect != null)
@@ -124,10 +125,10 @@ class EntityTable<T> extends StatelessWidget {
                       );
                     }),
                     if (actions != null)
-                      const DataColumn(
+                      DataColumn(
                         label: Text(
-                          'Действия',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                          narrow ? '' : 'Действия',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ),
                   ],
