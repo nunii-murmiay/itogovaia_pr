@@ -34,11 +34,19 @@ abstract class EntityListNotifier<T, Q> extends ChangeNotifier {
     _status = LoadStatus.loading;
     _error = null;
     notifyListeners();
+
     try {
       _result = await fetch(_query);
       _status = LoadStatus.success;
     } catch (e) {
-      _error = e.toString();
+      // Отменённый устаревший поиск не должен портить UI.
+      final text = e.toString();
+      if (text.contains('отменён') ||
+          text.contains('CancelledException') ||
+          text.contains('cancel')) {
+        return;
+      }
+      _error = text;
       _status = LoadStatus.error;
     }
     notifyListeners();

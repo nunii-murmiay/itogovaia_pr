@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../core/api_exceptions.dart';
+import '../core/catalog_cache.dart';
 import '../models/category.dart';
 import '../repositories/category_repository.dart';
 import '../repositories/product_repository.dart';
@@ -23,6 +25,8 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
   String _iconName = 'category';
   bool _loading = true;
   bool _dirty = false;
+  bool _saving = false;
+  Map<String, String> _serverErrors = {};
   ProductCategory? _existing;
 
   static const _icons = [
@@ -42,7 +46,8 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
 
   Future<void> _load() async {
     if (widget.id != null) {
-      final found = await context.read<CategoryRepository>().findById(widget.id!);
+      final found =
+          await context.read<CategoryRepository>().findById(widget.id!);
       if (found != null) {
         _existing = found;
         _nameCtrl.text = found.name;
@@ -57,8 +62,14 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
     if (!_dirty) setState(() => _dirty = true);
   }
 
+  String? _fieldError(String key, String? local) => _serverErrors[key] ?? local;
+
   Future<void> _save() async {
+    if (_saving) return;
+    setState(() => _serverErrors = {});
     if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _saving = true);
     final repo = context.read<CategoryRepository>();
     final item = ProductCategory(
       id: _existing?.id ?? 0,
@@ -67,17 +78,35 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
       iconName: _iconName,
       deletedAt: _existing?.deletedAt,
     );
-    if (_existing == null) {
-      await repo.create(item);
-    } else {
-      await repo.update(item);
-    }
-    if (mounted) {
+
+    try {
+      if (_existing == null) {
+        await repo.create(item);
+      } else {
+        await repo.update(item);
+      }
+      if (!mounted) return;
+      context.read<CatalogCache>().invalidate();
       setState(() => _dirty = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Категория сохранена')),
       );
       context.go('/categories');
+    } on ValidationException catch (e) {
+      setState(() => _serverErrors = e.errors);
+      _formKey.currentState!.validate();
+    } on ConflictException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -88,7 +117,6 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
     super.dispose();
   }
 
-  /// Поля заданы списком FormFieldSpec — общая конструкция формы (п.18).
   List<FormFieldSpec> get _fieldSpecs => [
         FormFieldSpec(
           builder: (_) => TextFormField(
@@ -98,8 +126,10 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
               border: OutlineInputBorder(),
             ),
             onChanged: (_) => _markDirty(),
-            validator: (v) =>
-                AppValidators.lengthRange(v, min: 2, max: 60, field: 'Название'),
+            validator: (v) => _fieldError(
+              'name',
+              AppValidators.lengthRange(v, min: 2, max: 60, field: 'Название'),
+            ),
           ),
         ),
         FormFieldSpec(
@@ -111,7 +141,10 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
               border: OutlineInputBorder(),
             ),
             onChanged: (_) => _markDirty(),
-            validator: (v) => AppValidators.minLength(v, 5, field: 'Описание'),
+            validator: (v) => _fieldError(
+              'description',
+              AppValidators.minLength(v, 5, field: 'Описание'),
+            ),
           ),
         ),
         FormFieldSpec(
@@ -136,7 +169,8 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
         if (widget.isEditing)
           FormFieldSpec(
             builder: (context) => FutureBuilder<int>(
-              future: context.read<ProductRepository>().countByCategory(widget.id!),
+              future:
+                  context.read<ProductRepository>().countByCategory(widget.id!),
               builder: (context, snap) =>
                   Text('Связанных товаров: ${snap.data ?? 0}'),
             ),
@@ -149,12 +183,15 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     return EntityFormShell(
-      title: widget.isEditing ? 'Редактирование категории' : 'Новая категория',
+      title: widget.isEditing
+          ? 'Редактирование категории'
+          : 'Новая категория',
       subtitle: 'Карточка категории',
       icon: Icons.category,
       formKey: _formKey,
       isDirty: _dirty,
       isEditing: widget.isEditing,
+      isSaving: _saving,
       onCancel: () => context.go('/categories'),
       onSave: _save,
       fields: _fieldSpecs,

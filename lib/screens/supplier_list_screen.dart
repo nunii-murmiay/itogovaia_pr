@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../core/api_exceptions.dart';
 import '../models/supplier.dart';
 import '../models/supplier_query.dart';
 import '../repositories/product_repository.dart';
 import '../state/supplier_list_notifier.dart';
 import '../widgets/entity_table.dart';
+import '../widgets/list_load_body.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/responsive_chrome.dart';
 import '../widgets/search_filter_bar.dart';
@@ -52,25 +54,35 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
   }
 
   Future<void> _tryDelete(int id, String name) async {
-    final count = await context.read<ProductRepository>().countBySupplier(id);
-    if (!mounted) return;
-    if (count > 0) {
-      await showDialog<void>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Удаление невозможно'),
-          content: Text(
-            'Нельзя удалить поставщика «$name»: на него ссылаются $count товар(ов). '
-            'Сначала удалите или переназначьте эти товары.',
+    try {
+      final count = await context.read<ProductRepository>().countBySupplier(id);
+      if (!mounted) return;
+      if (count > 0) {
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Удаление невозможно'),
+            content: Text(
+              'Нельзя удалить поставщика «$name»: на него ссылаются $count товар(ов).',
+            ),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Понятно'),
+              ),
+            ],
           ),
-          actions: [
-            FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('Понятно')),
-          ],
-        ),
-      );
-      return;
+        );
+        return;
+      }
+      await context.read<SupplierListNotifier>().softDelete(id);
+    } on ConflictException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     }
-    await context.read<SupplierListNotifier>().softDelete(id);
   }
 
   @override
@@ -102,60 +114,65 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
             ),
             const SizedBox(height: 12),
             Expanded(
-              child: notifier.status == LoadStatus.loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : EntityTable<Supplier>(
-                      items: notifier.result.items,
-                      idOf: (s) => s.id,
-                      selected: notifier.selected,
-                      onToggleSelect: notifier.toggleSelection,
-                      onToggleSelectAll: () => notifier
-                          .toggleSelectAll(notifier.result.items.map((s) => s.id).toList()),
-                      sortField: notifier.query.sortField,
-                      sortAscending: notifier.query.sortAscending,
-                      isDeletedOf: (s) => s.isDeleted,
-                      onSort: (f) => _updateUrl(notifier.query.copyWith(
-                        sortField: f,
-                        sortAscending: f == notifier.query.sortField
-                            ? !notifier.query.sortAscending
-                            : true,
-                      )),
-                      columns: [
-                        TableColumnSpec(label: 'Название', sortField: 'name', build: (s) => Text(s.name)),
-                        TableColumnSpec(label: 'Страна', sortField: 'country', build: (s) => Text(s.country)),
-                        if (!narrow) ...[
-                          TableColumnSpec(label: 'Контакт', build: (s) => Text(s.contactPerson)),
-                          TableColumnSpec(label: 'Email', build: (s) => Text(s.email)),
-                        ],
-                        TableColumnSpec(
-                          label: 'Рейтинг',
-                          sortField: 'rating',
-                          numeric: true,
-                          build: (s) => Text('${s.rating}'),
-                        ),
-                      ],
-                      actions: (s) => [
-                        IconButton(
-                          icon: const Icon(Icons.edit_outlined, size: 18),
-                          onPressed: () => context.go('/suppliers/${s.id}/edit'),
-                        ),
-                        if (s.isDeleted) ...[
-                          IconButton(
-                            icon: const Icon(Icons.restore, size: 18),
-                            onPressed: () => notifier.restore(s.id),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete_forever, size: 18),
-                            color: Colors.red,
-                            onPressed: () => notifier.hardDelete(s.id),
-                          ),
-                        ] else
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline, size: 18),
-                            onPressed: () => _tryDelete(s.id, s.name),
-                          ),
-                      ],
+              child: ListLoadBody(
+                status: notifier.status,
+                error: notifier.error,
+                isEmpty: notifier.result.items.isEmpty,
+                emptyMessage: 'Поставщики не найдены',
+                onRetry: () => notifier.load(),
+                child: EntityTable<Supplier>(
+                  items: notifier.result.items,
+                  idOf: (s) => s.id,
+                  selected: notifier.selected,
+                  onToggleSelect: notifier.toggleSelection,
+                  onToggleSelectAll: () => notifier
+                      .toggleSelectAll(notifier.result.items.map((s) => s.id).toList()),
+                  sortField: notifier.query.sortField,
+                  sortAscending: notifier.query.sortAscending,
+                  isDeletedOf: (s) => s.isDeleted,
+                  onSort: (f) => _updateUrl(notifier.query.copyWith(
+                    sortField: f,
+                    sortAscending: f == notifier.query.sortField
+                        ? !notifier.query.sortAscending
+                        : true,
+                  )),
+                  columns: [
+                    TableColumnSpec(label: 'Название', sortField: 'name', build: (s) => Text(s.name)),
+                    TableColumnSpec(label: 'Страна', sortField: 'country', build: (s) => Text(s.country)),
+                    if (!narrow) ...[
+                      TableColumnSpec(label: 'Контакт', build: (s) => Text(s.contactPerson)),
+                      TableColumnSpec(label: 'Email', build: (s) => Text(s.email)),
+                    ],
+                    TableColumnSpec(
+                      label: 'Рейтинг',
+                      sortField: 'rating',
+                      numeric: true,
+                      build: (s) => Text('${s.rating}'),
                     ),
+                  ],
+                  actions: (s) => [
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      onPressed: () => context.go('/suppliers/${s.id}/edit'),
+                    ),
+                    if (s.isDeleted) ...[
+                      IconButton(
+                        icon: const Icon(Icons.restore, size: 18),
+                        onPressed: () => notifier.restore(s.id),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_forever, size: 18),
+                        color: Colors.red,
+                        onPressed: () => notifier.hardDelete(s.id),
+                      ),
+                    ] else
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, size: 18),
+                        onPressed: () => _tryDelete(s.id, s.name),
+                      ),
+                  ],
+                ),
+              ),
             ),
             PaginationBar(
               page: notifier.result.page,

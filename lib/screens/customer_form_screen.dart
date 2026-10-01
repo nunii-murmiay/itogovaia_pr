@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../core/api_exceptions.dart';
 import '../models/customer.dart';
 import '../models/loyalty_card.dart';
 import '../repositories/customer_repository.dart';
@@ -27,7 +28,8 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
   DateTime _issuedAt = DateTime.now();
   bool _loading = true;
   bool _dirty = false;
-  String? _emailUniqueError;
+  bool _saving = false;
+  Map<String, String> _serverErrors = {};
   Customer? _existing;
 
   @override
@@ -38,7 +40,8 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
 
   Future<void> _load() async {
     if (widget.id != null) {
-      final found = await context.read<CustomerRepository>().findById(widget.id!);
+      final found =
+          await context.read<CustomerRepository>().findById(widget.id!);
       if (found != null) {
         _existing = found;
         _nameCtrl.text = found.fullName;
@@ -50,7 +53,8 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
         _issuedAt = found.card.issuedAt;
       }
     } else {
-      _cardNumberCtrl.text = 'LC-${DateTime.now().millisecondsSinceEpoch % 100000}';
+      _cardNumberCtrl.text =
+          'LC-${DateTime.now().millisecondsSinceEpoch % 100000}';
       _pointsCtrl.text = '0';
     }
     if (mounted) setState(() => _loading = false);
@@ -60,31 +64,14 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
     if (!_dirty) setState(() => _dirty = true);
   }
 
-  Future<void> _onEmailChanged(String value) async {
-    _markDirty();
-    final format = AppValidators.email(value);
-    if (format != null) {
-      setState(() => _emailUniqueError = null);
-      return;
-    }
-    final taken = await context.read<CustomerRepository>().isEmailTaken(
-          value,
-          excludeId: _existing?.id,
-        );
-    if (!mounted) return;
-    setState(() => _emailUniqueError = taken ? 'Этот email уже зарегистрирован' : null);
-  }
+  String? _fieldError(String key, String? local) => _serverErrors[key] ?? local;
 
   Future<void> _save() async {
-    final taken = await context.read<CustomerRepository>().isEmailTaken(
-          _emailCtrl.text,
-          excludeId: _existing?.id,
-        );
-    if (!mounted) return;
-    setState(() => _emailUniqueError = taken ? 'Этот email уже зарегистрирован' : null);
+    if (_saving) return;
+    setState(() => _serverErrors = {});
     if (!_formKey.currentState!.validate()) return;
-    if (_emailUniqueError != null) return;
 
+    setState(() => _saving = true);
     final repo = context.read<CustomerRepository>();
     final item = Customer(
       id: _existing?.id ?? 0,
@@ -99,17 +86,34 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
       ),
       deletedAt: _existing?.deletedAt,
     );
-    if (_existing == null) {
-      await repo.create(item);
-    } else {
-      await repo.update(item);
-    }
-    if (mounted) {
+
+    try {
+      if (_existing == null) {
+        await repo.create(item);
+      } else {
+        await repo.update(item);
+      }
+      if (!mounted) return;
       setState(() => _dirty = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Клиент сохранён')),
       );
       context.go('/customers');
+    } on ValidationException catch (e) {
+      setState(() => _serverErrors = e.errors);
+      _formKey.currentState!.validate();
+    } on ConflictException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -135,37 +139,54 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
       formKey: _formKey,
       isDirty: _dirty,
       isEditing: widget.isEditing,
+      isSaving: _saving,
       onCancel: () => context.go('/customers'),
       onSave: _save,
       children: [
         TextFormField(
           controller: _nameCtrl,
-          decoration: const InputDecoration(labelText: 'ФИО *', border: OutlineInputBorder()),
+          decoration: const InputDecoration(
+            labelText: 'ФИО *',
+            border: OutlineInputBorder(),
+          ),
           onChanged: (_) => _markDirty(),
-          validator: (v) => AppValidators.lengthRange(v, min: 3, max: 100, field: 'ФИО'),
+          validator: (v) => _fieldError(
+            'fullName',
+            AppValidators.lengthRange(v, min: 3, max: 100, field: 'ФИО'),
+          ),
         ),
         const SizedBox(height: 16),
         TextFormField(
           controller: _emailCtrl,
-          decoration: InputDecoration(
+          decoration: const InputDecoration(
             labelText: 'Email *',
-            border: const OutlineInputBorder(),
-            errorText: _emailUniqueError,
+            border: OutlineInputBorder(),
           ),
-          onChanged: _onEmailChanged,
-          validator: (v) => AppValidators.email(v) ?? _emailUniqueError,
+          onChanged: (_) {
+            _markDirty();
+            if (_serverErrors.containsKey('email')) {
+              setState(() => _serverErrors.remove('email'));
+            }
+          },
+          validator: (v) => _fieldError('email', AppValidators.email(v)),
         ),
         const SizedBox(height: 16),
         TextFormField(
           controller: _phoneCtrl,
-          decoration: const InputDecoration(labelText: 'Телефон *', border: OutlineInputBorder()),
+          decoration: const InputDecoration(
+            labelText: 'Телефон *',
+            border: OutlineInputBorder(),
+          ),
           onChanged: (_) => _markDirty(),
-          validator: (v) => AppValidators.phone(v),
+          validator: (v) => _fieldError('phone', AppValidators.phone(v)),
         ),
         const SizedBox(height: 24),
         Text(
           'Карта лояльности',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          style: Theme.of(context)
+              .textTheme
+              .titleMedium
+              ?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         const Text(
@@ -180,7 +201,10 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
             border: OutlineInputBorder(),
           ),
           onChanged: (_) => _markDirty(),
-          validator: (v) => AppValidators.minLength(v, 4, field: 'Номер карты'),
+          validator: (v) => _fieldError(
+            'cardNumber',
+            AppValidators.minLength(v, 4, field: 'Номер карты'),
+          ),
         ),
         const SizedBox(height: 16),
         Row(
@@ -194,7 +218,10 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                   border: OutlineInputBorder(),
                 ),
                 onChanged: (_) => _markDirty(),
-                validator: (v) => AppValidators.nonNegativeInt(v, field: 'Баллы'),
+                validator: (v) => _fieldError(
+                  'points',
+                  AppValidators.nonNegativeInt(v, field: 'Баллы'),
+                ),
               ),
             ),
             const SizedBox(width: 12),
@@ -223,9 +250,11 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
         ListTile(
           contentPadding: EdgeInsets.zero,
           title: const Text('Дата выдачи карты'),
-          subtitle: Text('${_issuedAt.day.toString().padLeft(2, '0')}.'
-              '${_issuedAt.month.toString().padLeft(2, '0')}.'
-              '${_issuedAt.year}'),
+          subtitle: Text(
+            '${_issuedAt.day.toString().padLeft(2, '0')}.'
+            '${_issuedAt.month.toString().padLeft(2, '0')}.'
+            '${_issuedAt.year}',
+          ),
           trailing: OutlinedButton(
             onPressed: () async {
               final picked = await showDatePicker(

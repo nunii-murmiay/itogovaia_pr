@@ -4,8 +4,8 @@ import 'package:provider/provider.dart';
 import '../models/customer.dart';
 import '../models/customer_query.dart';
 import '../state/customer_list_notifier.dart';
-import '../state/entity_list_notifier.dart';
 import '../widgets/entity_table.dart';
+import '../widgets/list_load_body.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/responsive_chrome.dart';
 import '../widgets/search_filter_bar.dart';
@@ -80,9 +80,13 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
             ),
             const SizedBox(height: 12),
             Expanded(
-              child: notifier.status == LoadStatus.loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : EntityTable<Customer>(
+              child: ListLoadBody(
+                status: notifier.status,
+                error: notifier.error,
+                isEmpty: notifier.result.items.isEmpty,
+                emptyMessage: 'Клиенты не найдены',
+                onRetry: () => notifier.load(),
+                child: EntityTable<Customer>(
                       items: notifier.result.items,
                       idOf: (c) => c.id,
                       selected: notifier.selected,
@@ -136,6 +140,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                           ),
                       ],
                     ),
+              ),
             ),
             PaginationBar(
               page: notifier.result.page,

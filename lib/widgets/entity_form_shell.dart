@@ -18,6 +18,7 @@ class EntityFormShell extends StatelessWidget {
   final GlobalKey<FormState> formKey;
   final bool isDirty;
   final bool isEditing;
+  final bool isSaving;
   final VoidCallback onCancel;
   final Future<void> Function() onSave;
   final List<Widget> children;
@@ -33,6 +34,7 @@ class EntityFormShell extends StatelessWidget {
     required this.isEditing,
     required this.onCancel,
     required this.onSave,
+    this.isSaving = false,
     this.children = const [],
     this.fields,
   });
@@ -142,9 +144,19 @@ class EntityFormShell extends StatelessWidget {
                             ),
                             const SizedBox(width: 12),
                             FilledButton.icon(
-                              onPressed: onSave,
-                              icon: const Icon(Icons.save),
-                              label: Text(isEditing ? 'Сохранить' : 'Создать'),
+                              onPressed: isSaving ? null : onSave,
+                              icon: isSaving
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    )
+                                  : const Icon(Icons.save),
+                              label: Text(
+                                isSaving
+                                    ? 'Сохранение...'
+                                    : (isEditing ? 'Сохранить' : 'Создать'),
+                              ),
                             ),
                           ],
                         ),

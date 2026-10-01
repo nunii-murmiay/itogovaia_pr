@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../core/api_exceptions.dart';
+import '../core/catalog_cache.dart';
 import '../models/supplier.dart';
 import '../repositories/product_repository.dart';
 import '../repositories/supplier_repository.dart';
@@ -26,6 +28,8 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
   final _ratingCtrl = TextEditingController();
   bool _loading = true;
   bool _dirty = false;
+  bool _saving = false;
+  Map<String, String> _serverErrors = {};
   Supplier? _existing;
 
   @override
@@ -36,7 +40,8 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
 
   Future<void> _load() async {
     if (widget.id != null) {
-      final found = await context.read<SupplierRepository>().findById(widget.id!);
+      final found =
+          await context.read<SupplierRepository>().findById(widget.id!);
       if (found != null) {
         _existing = found;
         _nameCtrl.text = found.name;
@@ -57,8 +62,14 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
     if (!_dirty) setState(() => _dirty = true);
   }
 
+  String? _fieldError(String key, String? local) => _serverErrors[key] ?? local;
+
   Future<void> _save() async {
+    if (_saving) return;
+    setState(() => _serverErrors = {});
     if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _saving = true);
     final repo = context.read<SupplierRepository>();
     final item = Supplier(
       id: _existing?.id ?? 0,
@@ -70,17 +81,35 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
       rating: double.parse(_ratingCtrl.text.trim().replaceAll(',', '.')),
       deletedAt: _existing?.deletedAt,
     );
-    if (_existing == null) {
-      await repo.create(item);
-    } else {
-      await repo.update(item);
-    }
-    if (mounted) {
+
+    try {
+      if (_existing == null) {
+        await repo.create(item);
+      } else {
+        await repo.update(item);
+      }
+      if (!mounted) return;
+      context.read<CatalogCache>().invalidate();
       setState(() => _dirty = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Поставщик сохранён')),
       );
       context.go('/suppliers');
+    } on ValidationException catch (e) {
+      setState(() => _serverErrors = e.errors);
+      _formKey.currentState!.validate();
+    } on ConflictException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -101,20 +130,29 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     return EntityFormShell(
-      title: widget.isEditing ? 'Редактирование поставщика' : 'Новый поставщик',
+      title: widget.isEditing
+          ? 'Редактирование поставщика'
+          : 'Новый поставщик',
       subtitle: 'Карточка поставщика',
       icon: Icons.business,
       formKey: _formKey,
       isDirty: _dirty,
       isEditing: widget.isEditing,
+      isSaving: _saving,
       onCancel: () => context.go('/suppliers'),
       onSave: _save,
       children: [
         TextFormField(
           controller: _nameCtrl,
-          decoration: const InputDecoration(labelText: 'Название *', border: OutlineInputBorder()),
+          decoration: const InputDecoration(
+            labelText: 'Название *',
+            border: OutlineInputBorder(),
+          ),
           onChanged: (_) => _markDirty(),
-          validator: (v) => AppValidators.lengthRange(v, min: 2, max: 80, field: 'Название'),
+          validator: (v) => _fieldError(
+            'name',
+            AppValidators.lengthRange(v, min: 2, max: 80, field: 'Название'),
+          ),
         ),
         const SizedBox(height: 16),
         Row(
@@ -122,9 +160,15 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
             Expanded(
               child: TextFormField(
                 controller: _countryCtrl,
-                decoration: const InputDecoration(labelText: 'Страна *', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Страна *',
+                  border: OutlineInputBorder(),
+                ),
                 onChanged: (_) => _markDirty(),
-                validator: (v) => AppValidators.required(v, field: 'Страна'),
+                validator: (v) => _fieldError(
+                  'country',
+                  AppValidators.required(v, field: 'Страна'),
+                ),
               ),
             ),
             const SizedBox(width: 12),
@@ -132,9 +176,15 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
               child: TextFormField(
                 controller: _ratingCtrl,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Рейтинг *', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Рейтинг *',
+                  border: OutlineInputBorder(),
+                ),
                 onChanged: (_) => _markDirty(),
-                validator: (v) => AppValidators.rangeDouble(v, min: 1, max: 5, field: 'Рейтинг'),
+                validator: (v) => _fieldError(
+                  'rating',
+                  AppValidators.rangeDouble(v, min: 1, max: 5, field: 'Рейтинг'),
+                ),
               ),
             ),
           ],
@@ -142,9 +192,15 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
         const SizedBox(height: 16),
         TextFormField(
           controller: _contactCtrl,
-          decoration: const InputDecoration(labelText: 'Контактное лицо *', border: OutlineInputBorder()),
+          decoration: const InputDecoration(
+            labelText: 'Контактное лицо *',
+            border: OutlineInputBorder(),
+          ),
           onChanged: (_) => _markDirty(),
-          validator: (v) => AppValidators.minLength(v, 2, field: 'Контактное лицо'),
+          validator: (v) => _fieldError(
+            'contactPerson',
+            AppValidators.minLength(v, 2, field: 'Контактное лицо'),
+          ),
         ),
         const SizedBox(height: 16),
         Row(
@@ -152,18 +208,24 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
             Expanded(
               child: TextFormField(
                 controller: _phoneCtrl,
-                decoration: const InputDecoration(labelText: 'Телефон *', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Телефон *',
+                  border: OutlineInputBorder(),
+                ),
                 onChanged: (_) => _markDirty(),
-                validator: (v) => AppValidators.phone(v),
+                validator: (v) => _fieldError('phone', AppValidators.phone(v)),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: TextFormField(
                 controller: _emailCtrl,
-                decoration: const InputDecoration(labelText: 'Email *', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Email *',
+                  border: OutlineInputBorder(),
+                ),
                 onChanged: (_) => _markDirty(),
-                validator: (v) => AppValidators.email(v),
+                validator: (v) => _fieldError('email', AppValidators.email(v)),
               ),
             ),
           ],
@@ -171,7 +233,8 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
         if (widget.isEditing) ...[
           const SizedBox(height: 12),
           FutureBuilder<int>(
-            future: context.read<ProductRepository>().countBySupplier(widget.id!),
+            future:
+                context.read<ProductRepository>().countBySupplier(widget.id!),
             builder: (context, snap) {
               final n = snap.data ?? 0;
               return Text(

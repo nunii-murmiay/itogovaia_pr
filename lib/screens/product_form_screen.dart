@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../core/api_exceptions.dart';
+import '../core/catalog_cache.dart';
 import '../models/brand.dart';
 import '../models/category.dart';
 import '../models/product.dart';
 import '../models/supplier.dart';
-import '../repositories/brand_repository.dart';
-import '../repositories/category_repository.dart';
 import '../repositories/product_repository.dart';
-import '../repositories/supplier_repository.dart';
 import '../validation/validators.dart';
 import '../widgets/chip_multi_select.dart';
 import '../widgets/entity_form_shell.dart';
@@ -35,7 +34,8 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   List<int> _brandIds = [];
   bool _loading = true;
   bool _dirty = false;
-  String? _skuUniqueError;
+  bool _saving = false;
+  Map<String, String> _serverErrors = {};
   Product? _existing;
 
   List<Supplier> _suppliers = [];
@@ -49,12 +49,14 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   }
 
   Future<void> _bootstrap() async {
-    final suppliers = await context.read<SupplierRepository>().findAll();
-    final categories = await context.read<CategoryRepository>().findAll();
-    final brands = await context.read<BrandRepository>().findAll();
+    final cache = context.read<CatalogCache>();
+    final productRepo = context.read<ProductRepository>();
+    final suppliers = await cache.suppliers();
+    final categories = await cache.categories();
+    final brands = await cache.brands();
 
     if (widget.id != null) {
-      final found = await context.read<ProductRepository>().findById(widget.id!);
+      final found = await productRepo.findById(widget.id!);
       if (found != null) {
         _existing = found;
         _nameCtrl.text = found.name;
@@ -86,41 +88,21 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     if (!_dirty) setState(() => _dirty = true);
   }
 
-  /// Каскад: после выбора поставщика остаются только связанные бренды.
   List<Brand> get _availableBrands {
     if (_supplierId == null) return const [];
-    return _brands
-        .where((b) => b.supplierIds.contains(_supplierId))
-        .toList();
+    final filtered =
+        _brands.where((b) => b.supplierIds.contains(_supplierId)).toList();
+    return filtered.isEmpty ? _brands : filtered;
   }
 
-  Future<void> _onSkuChanged(String value) async {
-    _markDirty();
-    final format = AppValidators.sku(value);
-    if (format != null) {
-      setState(() => _skuUniqueError = null);
-      return;
-    }
-    final taken = await context.read<ProductRepository>().isSkuTaken(
-          value,
-          excludeId: _existing?.id,
-        );
-    if (!mounted) return;
-    setState(() => _skuUniqueError = taken ? 'Такой артикул уже существует' : null);
-  }
+  String? _fieldError(String key, String? local) => _serverErrors[key] ?? local;
 
   Future<void> _save() async {
-    // финальная проверка уникальности перед validate
-    final taken = await context.read<ProductRepository>().isSkuTaken(
-          _skuCtrl.text,
-          excludeId: _existing?.id,
-        );
-    if (!mounted) return;
-    setState(() => _skuUniqueError = taken ? 'Такой артикул уже существует' : null);
-
+    if (_saving) return;
+    setState(() => _serverErrors = {});
     if (!_formKey.currentState!.validate()) return;
-    if (_skuUniqueError != null) return;
 
+    setState(() => _saving = true);
     final repo = context.read<ProductRepository>();
     final product = Product(
       id: _existing?.id ?? 0,
@@ -135,18 +117,36 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       deletedAt: _existing?.deletedAt,
     );
 
-    if (_existing == null) {
-      await repo.create(product);
-    } else {
-      await repo.update(product);
-    }
-
-    if (mounted) {
+    try {
+      if (_existing == null) {
+        await repo.create(product);
+      } else {
+        await repo.update(product);
+      }
+      if (!mounted) return;
+      context.read<CatalogCache>().invalidate();
       setState(() => _dirty = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_existing == null ? 'Товар создан' : 'Товар сохранён')),
+        SnackBar(
+          content: Text(_existing == null ? 'Товар создан' : 'Товар сохранён'),
+        ),
       );
       context.go('/products');
+    } on ValidationException catch (e) {
+      setState(() => _serverErrors = e.errors);
+      _formKey.currentState!.validate();
+    } on ConflictException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -168,11 +168,14 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
 
     return EntityFormShell(
       title: widget.isEditing ? 'Редактирование товара' : 'Новый товар',
-      subtitle: widget.isEditing ? 'Изменение карточки товара' : 'Создание товара зоомагазина',
+      subtitle: widget.isEditing
+          ? 'Изменение карточки товара'
+          : 'Создание товара зоомагазина',
       icon: widget.isEditing ? Icons.edit_note : Icons.add_circle_outline,
       formKey: _formKey,
       isDirty: _dirty,
       isEditing: widget.isEditing,
+      isSaving: _saving,
       onCancel: () => context.go('/products'),
       onSave: _save,
       children: [
@@ -183,19 +186,26 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
             border: OutlineInputBorder(),
           ),
           onChanged: (_) => _markDirty(),
-          validator: (v) => AppValidators.lengthRange(v, min: 3, max: 120, field: 'Название'),
+          validator: (v) => _fieldError(
+            'name',
+            AppValidators.lengthRange(v, min: 3, max: 120, field: 'Название'),
+          ),
         ),
         const SizedBox(height: 16),
         TextFormField(
           controller: _skuCtrl,
-          decoration: InputDecoration(
+          decoration: const InputDecoration(
             labelText: 'Артикул (SKU) *',
             hintText: 'PET-1099',
-            border: const OutlineInputBorder(),
-            errorText: _skuUniqueError,
+            border: OutlineInputBorder(),
           ),
-          onChanged: _onSkuChanged,
-          validator: (v) => AppValidators.sku(v) ?? _skuUniqueError,
+          onChanged: (_) {
+            _markDirty();
+            if (_serverErrors.containsKey('sku')) {
+              setState(() => _serverErrors.remove('sku'));
+            }
+          },
+          validator: (v) => _fieldError('sku', AppValidators.sku(v)),
         ),
         const SizedBox(height: 16),
         DropdownButtonFormField<int>(
@@ -207,10 +217,12 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
             helperText: 'При выборе поставщика список брендов сужается',
           ),
           items: _suppliers
-              .map((s) => DropdownMenuItem(
-                    value: s.id,
-                    child: Text(s.name, overflow: TextOverflow.ellipsis),
-                  ))
+              .map(
+                (s) => DropdownMenuItem(
+                  value: s.id,
+                  child: Text(s.name, overflow: TextOverflow.ellipsis),
+                ),
+              )
               .toList(),
           onChanged: (v) {
             setState(() {
@@ -220,7 +232,10 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               _brandIds = _brandIds.where(allowed.contains).toList();
             });
           },
-          validator: (v) => AppValidators.requiredId(v, field: 'поставщика'),
+          validator: (v) => _fieldError(
+            'supplierId',
+            AppValidators.requiredId(v, field: 'поставщика'),
+          ),
         ),
         const SizedBox(height: 16),
         ChipMultiSelectFormField(
@@ -231,13 +246,17 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
             _categoryIds = next;
             _dirty = true;
           }),
-          validator: (v) => AppValidators.nonEmptyIds(v, field: 'категорию'),
+          validator: (v) => _fieldError(
+            'categoryIds',
+            AppValidators.nonEmptyIds(v, field: 'категорию'),
+          ),
         ),
         const SizedBox(height: 16),
         ChipMultiSelectFormField(
           label: 'Бренды *',
           value: _brandIds,
-          options: _availableBrands.map((b) => (id: b.id, name: b.name)).toList(),
+          options:
+              _availableBrands.map((b) => (id: b.id, name: b.name)).toList(),
           emptyHint: _supplierId == null
               ? 'Сначала выберите поставщика'
               : 'Нет брендов у этого поставщика',
@@ -245,7 +264,10 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
             _brandIds = next;
             _dirty = true;
           }),
-          validator: (v) => AppValidators.nonEmptyIds(v, field: 'бренд'),
+          validator: (v) => _fieldError(
+            'brandIds',
+            AppValidators.nonEmptyIds(v, field: 'бренд'),
+          ),
         ),
         const SizedBox(height: 16),
         Row(
@@ -259,7 +281,10 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                   border: OutlineInputBorder(),
                 ),
                 onChanged: (_) => _markDirty(),
-                validator: (v) => AppValidators.positiveNumber(v, field: 'Цена'),
+                validator: (v) => _fieldError(
+                  'price',
+                  AppValidators.positiveNumber(v, field: 'Цена'),
+                ),
               ),
             ),
             const SizedBox(width: 12),
@@ -272,7 +297,10 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                   border: OutlineInputBorder(),
                 ),
                 onChanged: (_) => _markDirty(),
-                validator: (v) => AppValidators.nonNegativeInt(v, field: 'Остаток'),
+                validator: (v) => _fieldError(
+                  'stock',
+                  AppValidators.nonNegativeInt(v, field: 'Остаток'),
+                ),
               ),
             ),
             const SizedBox(width: 12),
@@ -285,8 +313,10 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                   border: OutlineInputBorder(),
                 ),
                 onChanged: (_) => _markDirty(),
-                validator: (v) =>
-                    AppValidators.rangeDouble(v, min: 1, max: 5, field: 'Рейтинг'),
+                validator: (v) => _fieldError(
+                  'rating',
+                  AppValidators.rangeDouble(v, min: 1, max: 5, field: 'Рейтинг'),
+                ),
               ),
             ),
           ],
