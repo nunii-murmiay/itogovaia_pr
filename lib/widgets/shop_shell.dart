@@ -120,7 +120,7 @@ class AppShell extends StatelessWidget {
     final width = MediaQuery.sizeOf(context).width;
     final phone = width < Breakpoints.phone;
     final desktop = width >= Breakpoints.desktop;
-    final useDrawer = phone && items.length > 5;
+    final manyOnPhone = phone && items.length > 5;
 
     var index = items.indexWhere((n) => location.startsWith(n.path));
     if (index < 0) index = 0;
@@ -136,42 +136,6 @@ class AppShell extends StatelessWidget {
     final user = auth?.user;
 
     return Scaffold(
-      drawer:
-          useDrawer
-              ? Drawer(
-                child: SafeArea(
-                  child: ListView(
-                    children: [
-                      DrawerHeader(
-                        child: Align(
-                          alignment: Alignment.bottomLeft,
-                          child: Text(
-                            user == null
-                                ? 'ЗооМаг'
-                                : '${user.fullName}\n${user.role.label}',
-                            style: theme.textTheme.titleMedium,
-                          ),
-                        ),
-                      ),
-                      for (final n in items)
-                        ListTile(
-                          leading: Icon(
-                            location.startsWith(n.path)
-                                ? n.selectedIcon
-                                : n.icon,
-                          ),
-                          title: Text(n.label),
-                          selected: location.startsWith(n.path),
-                          onTap: () {
-                            Navigator.of(context).pop();
-                            context.go(n.path);
-                          },
-                        ),
-                    ],
-                  ),
-                ),
-              )
-              : null,
       body: Column(
         children: [
           if (auth != null)
@@ -183,15 +147,6 @@ class AppShell extends StatelessWidget {
                   height: 48,
                   child: Row(
                     children: [
-                      if (useDrawer)
-                        Builder(
-                          builder:
-                              (ctx) => IconButton(
-                                tooltip: 'Меню',
-                                onPressed: () => Scaffold.of(ctx).openDrawer(),
-                                icon: const Icon(Icons.menu),
-                              ),
-                        ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -270,8 +225,15 @@ class AppShell extends StatelessWidget {
         ],
       ),
       bottomNavigationBar:
-          phone && !useDrawer && items.isNotEmpty
-              ? NavigationBar(
+          !phone || items.isEmpty
+              ? null
+              : manyOnPhone
+              ? _ManyDestinationsBar(
+                items: items,
+                index: index.clamp(0, items.length - 1),
+                onSelected: (i) => context.go(items[i].path),
+              )
+              : NavigationBar(
                 selectedIndex: index.clamp(0, items.length - 1),
                 onDestinationSelected: (i) => context.go(items[i].path),
                 labelBehavior:
@@ -284,8 +246,71 @@ class AppShell extends StatelessWidget {
                       label: n.label,
                     ),
                 ],
-              )
-              : null,
+              ),
+    );
+  }
+}
+
+class _ManyDestinationsBar extends StatelessWidget {
+  final List<_NavItem> items;
+  final int index;
+  final ValueChanged<int> onSelected;
+
+  const _ManyDestinationsBar({
+    required this.items,
+    required this.index,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Material(
+      color: theme.colorScheme.surface,
+      elevation: 3,
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 64,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: items.length,
+            itemBuilder: (context, i) {
+              final item = items[i];
+              final selected = i == index;
+              final color =
+                  selected
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurfaceVariant;
+              return InkWell(
+                onTap: () => onSelected(i),
+                child: SizedBox(
+                  width: 76,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Tooltip(
+                        message: item.label,
+                        child: Icon(
+                          selected ? item.selectedIcon : item.icon,
+                          color: color,
+                        ),
+                      ),
+                      if (selected)
+                        Text(
+                          item.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 12, color: color),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
     );
   }
 }

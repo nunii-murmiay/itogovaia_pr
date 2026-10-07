@@ -6,6 +6,7 @@ class SupplierCard extends StatelessWidget {
   final Supplier supplier;
   final bool isSelected;
   final ValueChanged<int>? onToggleSelect;
+  final VoidCallback? onView;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   final VoidCallback? onRestore;
@@ -16,6 +17,7 @@ class SupplierCard extends StatelessWidget {
     required this.supplier,
     this.isSelected = false,
     this.onToggleSelect,
+    this.onView,
     this.onEdit,
     this.onDelete,
     this.onRestore,
@@ -144,6 +146,7 @@ class SupplierCard extends StatelessWidget {
               alignment: Alignment.centerRight,
               child: EntityActions(
                 deleted: supplier.isDeleted,
+                onView: onView,
                 onEdit: onEdit,
                 onDelete: onDelete,
                 onRestore: onRestore,

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -35,21 +37,43 @@ class _SalesScreenState extends State<SalesScreen> {
   List<Product> _products = [];
   int? _customerId;
   final List<_CartLine> _lines = [];
+  final Map<int, String> _lineErrors = {};
   bool _saving = false;
+  Timer? _customersTimer;
 
   @override
   void initState() {
     super.initState();
     _lines.add(_CartLine());
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    _customersTimer = Timer.periodic(
+      const Duration(seconds: 3),
+      (_) => _refreshCustomers(),
+    );
   }
 
   @override
   void dispose() {
+    _customersTimer?.cancel();
     for (final line in _lines) {
       line.dispose();
     }
     super.dispose();
+  }
+
+  Future<void> _refreshCustomers() async {
+    if (!mounted || _loading || _saving) return;
+    try {
+      final customers = await context.read<CustomerRepository>().findAll();
+      if (!mounted) return;
+      setState(() {
+        _customers = customers;
+        if (_customerId != null &&
+            customers.every((c) => c.id != _customerId)) {
+          _customerId = customers.isNotEmpty ? customers.first.id : null;
+        }
+      });
+    } catch (_) {}
   }
 
   void _addLine() {
@@ -144,7 +168,32 @@ class _SalesScreenState extends State<SalesScreen> {
       return;
     }
 
-    setState(() => _saving = true);
+    final shortages = <int, String>{};
+    for (var i = 0; i < _lines.length; i++) {
+      final line = _lines[i];
+      if (line.productId == null) continue;
+      final qty = int.tryParse(line.qty.text.trim()) ?? 0;
+      if (qty < 1) continue;
+      final product =
+          _products.where((p) => p.id == line.productId).firstOrNull;
+      if (product != null && qty > product.stock) {
+        shortages[i] =
+            'Недостаточно «${product.name}»: на складе ${product.stock}';
+      }
+    }
+    if (shortages.isNotEmpty) {
+      setState(() {
+        _lineErrors
+          ..clear()
+          ..addAll(shortages);
+      });
+      return;
+    }
+
+    setState(() {
+      _saving = true;
+      _lineErrors.clear();
+    });
     try {
       final repo = context.read<ApiSalesRepository>();
       for (final row in toSubmit) {
@@ -168,6 +217,24 @@ class _SalesScreenState extends State<SalesScreen> {
         line.qty.text = '1';
       }
       await _load();
+    } on ConflictException catch (e) {
+      if (!mounted) return;
+      final index = _lines.indexWhere((line) => line.productId == e.productId);
+      final product = _products.where((p) => p.id == e.productId).firstOrNull;
+      final text =
+          product == null
+              ? e.message
+              : 'Недостаточно «${product.name}»: на складе ${product.stock}';
+      if (index >= 0) {
+        setState(() => _lineErrors[index] = text);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(text),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
     } on ForbiddenException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -287,9 +354,10 @@ class _SalesScreenState extends State<SalesScreen> {
                                                   )
                                                   .toList(),
                                           onChanged:
-                                              (v) => setState(
-                                                () => line.productId = v,
-                                              ),
+                                              (v) => setState(() {
+                                                line.productId = v;
+                                                _lineErrors.remove(i);
+                                              }),
                                         ),
                                       ),
                                       if (_lines.length > 1) ...[
@@ -305,12 +373,18 @@ class _SalesScreenState extends State<SalesScreen> {
                                   const SizedBox(height: 8),
                                   TextField(
                                     controller: line.qty,
-                                    decoration: const InputDecoration(
+                                    decoration: InputDecoration(
                                       labelText: 'Количество',
-                                      border: OutlineInputBorder(),
+                                      border: const OutlineInputBorder(),
                                       isDense: true,
+                                      errorText: _lineErrors[i],
+                                      errorMaxLines: 3,
                                     ),
                                     keyboardType: TextInputType.number,
+                                    onChanged:
+                                        (_) => setState(
+                                          () => _lineErrors.remove(i),
+                                        ),
                                   ),
                                 ],
                               ),

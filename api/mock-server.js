@@ -168,19 +168,48 @@ function seed() {
       points: pointsList[i],
       level: levels[i],
     });
+    push('users', {
+      username: i === 0 ? 'reader' : email.split('@')[0],
+      passwordHash: hash('reader123'),
+      fullName,
+      email,
+      role: 'reader',
+      customerId,
+    });
   });
 
-  makeSale(1, 6, 2, -10);
-  makeSale(2, 11, 1, -3);
-  makeSale(3, 3, 1, -20);
-
+  const adminId = push('customers', {
+    fullName: 'Администратор',
+    email: 'admin@petshop.local',
+    phone: '+7 900 100-10-07',
+  });
+  push('cards', {
+    customerId: adminId,
+    number: 'ZC-' + String(adminId).padStart(6, '0'),
+    issuedAt: iso(2025, 6, 7),
+    points: 0,
+    level: 'Стандарт',
+  });
   push('users', {
     username: 'admin',
     passwordHash: hash('admin123'),
     fullName: 'Администратор',
     email: 'admin@petshop.local',
     role: 'admin',
-    customerId: null,
+    customerId: adminId,
+  });
+
+  const managerId = push('customers', {
+    fullName: 'Петрова А. С.',
+    email: 'petrova@petshop.local',
+    phone: '+7 900 100-10-08',
+  });
+  push('cards', {
+    customerId: managerId,
+    number: 'ZC-' + String(managerId).padStart(6, '0'),
+    issuedAt: iso(2025, 6, 8),
+    points: 0,
+    level: 'Стандарт',
   });
   push('users', {
     username: 'librarian',
@@ -188,16 +217,12 @@ function seed() {
     fullName: 'Петрова А. С.',
     email: 'petrova@petshop.local',
     role: 'librarian',
-    customerId: null,
+    customerId: managerId,
   });
-  push('users', {
-    username: 'reader',
-    passwordHash: hash('reader123'),
-    fullName: 'Смирнов П. А.',
-    email: 'smirnov@example.com',
-    role: 'reader',
-    customerId: 1,
-  });
+
+  makeSale(1, 6, 2, -10);
+  makeSale(2, 11, 1, -3);
+  makeSale(3, 3, 1, -20);
 }
 
 function push(collection, obj) {
@@ -281,6 +306,7 @@ function expandSale(s) {
   const product = db.products.find((p) => p.id === s.productId);
   return {
     id: s.id,
+    customerId: s.customerId,
     customer: customer ? { id: customer.id, fullName: customer.fullName } : null,
     product: product ? { id: product.id, name: product.name } : null,
     quantity: s.quantity,
@@ -560,13 +586,17 @@ async function handle(req, res, url) {
       return send(res, 422, { message: 'Ошибка валидации', errors });
     }
 
+    const fullName = String(body.fullName || username);
+    const email = String(body.email || '');
+    const customerId = push('customers', { fullName, email, phone: '' });
+    ensureLoyaltyCard(customerId, null);
     const id = push('users', {
       username,
       passwordHash: hash(password),
-      fullName: String(body.fullName || username),
-      email: String(body.email || ''),
+      fullName,
+      email,
       role: 'reader',
-      customerId: null,
+      customerId,
     });
     return send(res, 201, expandUser(db.users.find((u) => u.id === id)));
   }
@@ -647,7 +677,11 @@ async function handle(req, res, url) {
     if (Object.keys(errors).length) return send(res, 422, { message: 'Ошибка валидации', errors });
 
     if (product.stock < quantity) {
-      return fail(res, 409, 'Недостаточно товара на складе');
+      return send(res, 409, {
+        message: `Недостаточно «${product.name}»: на складе ${product.stock}`,
+        productId: product.id,
+        stock: product.stock,
+      });
     }
 
     const soldAt = new Date();
@@ -685,6 +719,7 @@ async function handle(req, res, url) {
     for (const row of db[collection]) {
       if (ids.includes(row.id) && !row.deletedAt) {
         row.deletedAt = new Date().toISOString();
+        if (collection === 'customers') setCustomerUsersDeleted(row.id, row.deletedAt);
         deleted += 1;
       }
     }
@@ -704,6 +739,7 @@ async function handle(req, res, url) {
       const row = db[collection].find((x) => x.id === id);
       if (!row) return fail(res, 404, 'Объект не найден');
       row.deletedAt = null;
+      if (collection === 'customers') setCustomerUsersDeleted(id, null);
       return send(res, 200, expand(row));
     }
 
@@ -712,7 +748,7 @@ async function handle(req, res, url) {
       if (q.includeDeleted !== 'true') rows = rows.filter((x) => !x.deletedAt);
 
       if (collection === 'sales' && user && user.role === 'reader') {
-        rows = rows.filter((s) => s.customerId === user.customerId);
+        rows = rows.filter((s) => Number(s.customerId) === Number(user.customerId));
       }
 
       rows = applyFilters(collection, rows, q);
@@ -741,6 +777,10 @@ async function handle(req, res, url) {
       const data = normalize(collection, body);
       const newId = push(collection, data);
       const row = db[collection].find((x) => x.id === newId);
+      if (collection === 'customers') {
+        ensureLoyaltyCard(row.id, body.card);
+        ensureCustomerAccount(row);
+      }
       return send(res, 201, expand(row));
     }
 
@@ -757,6 +797,17 @@ async function handle(req, res, url) {
       if (Object.keys(errors).length) return send(res, 422, { message: 'Ошибка валидации', errors });
 
       Object.assign(row, normalize(collection, merged));
+      if (collection === 'customers') {
+        ensureLoyaltyCard(row.id, body.card);
+        const linked = db.users.find((u) => u.customerId === row.id);
+        if (linked) {
+          linked.fullName = row.fullName;
+          linked.email = row.email;
+          if (!row.deletedAt) linked.deletedAt = null;
+        } else {
+          ensureCustomerAccount(row);
+        }
+      }
       return send(res, 200, expand(row));
     }
 
@@ -772,9 +823,13 @@ async function handle(req, res, url) {
           const linked = db.products.some((p) => p.supplierId === id && !p.deletedAt);
           if (linked) return fail(res, 409, 'На поставщика ссылаются товары, удаление невозможно');
         }
+        if (collection === 'customers') removeCustomerUsers(id);
         db[collection].splice(index, 1);
       } else {
         db[collection][index].deletedAt = new Date().toISOString();
+        if (collection === 'customers') {
+          setCustomerUsersDeleted(id, db[collection][index].deletedAt);
+        }
       }
       return send(res, 204);
     }
@@ -827,6 +882,48 @@ function normalize(collection, body) {
     default:
       return { ...body };
   }
+}
+
+function ensureLoyaltyCard(customerId, card) {
+  const existing = db.cards.find((c) => c.customerId === customerId && !c.deletedAt);
+  const next = {
+    number: (card && card.number) || ('ZC-' + String(customerId).padStart(6, '0')),
+    issuedAt: (card && card.issuedAt) || new Date().toISOString(),
+    points: card && card.points != null ? Number(card.points) : 0,
+    level: (card && card.level) || 'Стандарт',
+  };
+  if (existing) {
+    Object.assign(existing, next);
+    return;
+  }
+  push('cards', { customerId, ...next });
+}
+
+function ensureCustomerAccount(customer) {
+  if (db.users.some((u) => u.customerId === customer.id && !u.deletedAt)) return;
+  let login = String(customer.email || '').split('@')[0] || `client${customer.id}`;
+  login = login.replace(/[^a-zA-Z0-9._-]/g, '') || `client${customer.id}`;
+  if (db.users.some((u) => u.username === login && !u.deletedAt)) {
+    login = `${login}${customer.id}`;
+  }
+  push('users', {
+    username: login,
+    passwordHash: hash('reader123'),
+    fullName: customer.fullName,
+    email: customer.email,
+    role: 'reader',
+    customerId: customer.id,
+  });
+}
+
+function setCustomerUsersDeleted(customerId, deletedAt) {
+  for (const user of db.users) {
+    if (user.customerId === customerId) user.deletedAt = deletedAt;
+  }
+}
+
+function removeCustomerUsers(customerId) {
+  db.users = db.users.filter((user) => user.customerId !== customerId);
 }
 
 // ─────────────────────────────── запуск ───────────────────────────────

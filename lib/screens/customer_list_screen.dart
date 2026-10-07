@@ -8,6 +8,7 @@ import '../core/breakpoints.dart';
 import '../core/permissions.dart';
 import '../widgets/access_scope.dart';
 import '../widgets/adaptive_entity.dart';
+import '../widgets/record_dialog.dart';
 import '../widgets/entity_table.dart';
 import '../widgets/list_load_body.dart';
 import '../widgets/pagination_bar.dart';
@@ -57,6 +58,21 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
         path: '/customers',
         queryParameters: params.isEmpty ? null : params,
       ).toString(),
+    );
+  }
+
+  void _openCustomer(BuildContext context, Customer customer) {
+    showRecordDialog(
+      context,
+      title: customer.fullName,
+      rows: [
+        ('ФИО', customer.fullName),
+        ('Email', customer.email),
+        ('Телефон', customer.phone),
+        ('Карта', customer.card.number),
+        ('Уровень', customer.card.level),
+        ('Баллы', '${customer.card.points}'),
+      ],
     );
   }
 
@@ -111,6 +127,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                         onToggleSelect: () => notifier.toggleSelection(c.id),
                         actions: EntityActions(
                           deleted: c.isDeleted,
+                          onView: () => _openCustomer(context, c),
                           onEdit: () => context.go('/customers/${c.id}/edit'),
                           onDelete: () => notifier.softDelete(c.id),
                           onRestore: () => notifier.restore(c.id),
@@ -185,6 +202,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                         (c) => [
                           EntityActions(
                             deleted: c.isDeleted,
+                            onView: () => _openCustomer(context, c),
                             onEdit: () => context.go('/customers/${c.id}/edit'),
                             onDelete: () => notifier.softDelete(c.id),
                             onRestore: () => notifier.restore(c.id),

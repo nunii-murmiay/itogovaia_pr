@@ -9,6 +9,7 @@ import '../core/breakpoints.dart';
 import '../core/permissions.dart';
 import '../widgets/access_scope.dart';
 import '../widgets/adaptive_entity.dart';
+import '../widgets/record_dialog.dart';
 import '../widgets/entity_table.dart';
 import '../widgets/list_load_body.dart';
 import '../widgets/pagination_bar.dart';
@@ -137,6 +138,16 @@ class _BrandListScreenState extends State<BrandListScreen> {
                         onToggleSelect: () => notifier.toggleSelection(b.id),
                         actions: EntityActions(
                           deleted: b.isDeleted,
+                          onView:
+                              () => showRecordDialog(
+                                context,
+                                title: b.name,
+                                rows: [
+                                  ('Название', b.name),
+                                  ('Страна', b.country),
+                                  ('Описание', b.description),
+                                ],
+                              ),
                           onEdit: () => context.go('/brands/${b.id}/edit'),
                           onDelete: () => _tryDelete(b.id, b.name),
                           onRestore: () => notifier.restore(b.id),
@@ -197,6 +208,16 @@ class _BrandListScreenState extends State<BrandListScreen> {
                         (b) => [
                           EntityActions(
                             deleted: b.isDeleted,
+                            onView:
+                                () => showRecordDialog(
+                                  context,
+                                  title: b.name,
+                                  rows: [
+                                    ('Название', b.name),
+                                    ('Страна', b.country),
+                                    ('Описание', b.description),
+                                  ],
+                                ),
                             onEdit: () => context.go('/brands/${b.id}/edit'),
                             onDelete: () => _tryDelete(b.id, b.name),
                             onRestore: () => notifier.restore(b.id),

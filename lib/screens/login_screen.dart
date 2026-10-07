@@ -28,12 +28,6 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  Future<void> _fill(String login, String password) async {
-    _username.text = login;
-    _password.text = password;
-    await _submit();
-  }
-
   Future<void> _submit() async {
     setState(() => _error = null);
     if (!_formKey.currentState!.validate()) return;
@@ -170,41 +164,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         onPressed:
                             _loading ? null : () => context.go('/register'),
                         child: const Text('Регистрация'),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Учебные роли',
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.labelLarge,
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        alignment: WrapAlignment.center,
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          ActionChip(
-                            label: const Text('Покупатель'),
-                            onPressed:
-                                _loading
-                                    ? null
-                                    : () => _fill('reader', 'reader123'),
-                          ),
-                          ActionChip(
-                            label: const Text('Менеджер'),
-                            onPressed:
-                                _loading
-                                    ? null
-                                    : () => _fill('librarian', 'librarian123'),
-                          ),
-                          ActionChip(
-                            label: const Text('Администратор'),
-                            onPressed:
-                                _loading
-                                    ? null
-                                    : () => _fill('admin', 'admin123'),
-                          ),
-                        ],
                       ),
                     ],
                   ),

@@ -35,7 +35,9 @@ class NotFoundException extends ApiException {
 }
 
 class ConflictException extends ApiException {
-  const ConflictException(super.message);
+  final int? productId;
+
+  const ConflictException(super.message, {this.productId});
 }
 
 class ValidationException extends ApiException {
@@ -61,7 +63,13 @@ ApiException mapHttpError(int status, dynamic body) {
       message ?? 'Недостаточно прав для этого действия.',
     ),
     404 => NotFoundException(message ?? 'Запись не найдена.'),
-    409 => ConflictException(message ?? 'Операция невозможна.'),
+    409 => ConflictException(
+      message ?? 'Операция невозможна.',
+      productId:
+          (body is Map && body['productId'] is num)
+              ? (body['productId'] as num).toInt()
+              : null,
+    ),
     422 => ValidationException(
       message ?? 'Ошибка валидации',
       (body is Map && body['errors'] is Map)

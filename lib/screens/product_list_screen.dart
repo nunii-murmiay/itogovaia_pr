@@ -9,8 +9,10 @@ import '../models/brand.dart';
 import '../models/category.dart';
 import '../models/product.dart';
 import '../models/product_query.dart';
+import '../models/role.dart';
 import '../models/supplier.dart';
 import '../repositories/api_customer_repository.dart';
+import '../state/auth_notifier.dart';
 import '../repositories/customer_repository.dart';
 import '../state/product_list_notifier.dart';
 import '../widgets/access_scope.dart';
@@ -19,6 +21,7 @@ import '../widgets/entity_table.dart';
 import '../widgets/list_load_body.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/product_card.dart';
+import '../widgets/record_dialog.dart';
 import '../widgets/responsive_chrome.dart';
 import '../widgets/search_filter_bar.dart';
 
@@ -103,6 +106,15 @@ class _ProductListScreenState extends State<ProductListScreen> {
         .join(', ');
   }
 
+  Future<void> _openProduct(Product product) {
+    return showProductViewDialog(
+      context,
+      product: product,
+      supplierName: _supplierName(product.supplierId),
+      categoriesLabel: _categoriesLabel(product),
+    );
+  }
+
   /// Демо конфликта 409: продажа при нулевом остатке.
   Future<void> _trySale(Product product) async {
     try {
@@ -143,6 +155,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   @override
   Widget build(BuildContext context) {
     final notifier = context.watch<ProductListNotifier>();
+    final isBuyer = context.watch<AuthNotifier>().user?.role == Role.reader;
     final theme = Theme.of(context);
     final phone = MediaQuery.sizeOf(context).width < Breakpoints.phone;
 
@@ -183,7 +196,10 @@ class _ProductListScreenState extends State<ProductListScreen> {
             ListToolbar(
               search: DebouncedSearchBar(
                 initialValue: notifier.query.search,
-                hintText: 'Поиск по названию или артикулу...',
+                hintText:
+                    isBuyer
+                        ? 'Поиск по названию...'
+                        : 'Поиск по названию или артикулу...',
                 onChanged:
                     (text) => _updateUrl(notifier.query.copyWith(search: text)),
               ),
@@ -239,14 +255,14 @@ class _ProductListScreenState extends State<ProductListScreen> {
               ),
             ],
             const SizedBox(height: 16),
-            Expanded(child: _content(notifier)),
+            Expanded(child: _content(notifier, isBuyer: isBuyer)),
           ],
         ),
       ),
     );
   }
 
-  Widget _content(ProductListNotifier notifier) {
+  Widget _content(ProductListNotifier notifier, {required bool isBuyer}) {
     return ListLoadBody(
       status: notifier.status,
       error: notifier.error,
@@ -266,6 +282,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
                         product: item,
                         supplierName: _supplierName(item.supplierId),
                         isSelected: notifier.selected.contains(item.id),
+                        showSku: !isBuyer,
+                        onView: () => _openProduct(item),
                         onToggleSelect: notifier.toggleSelection,
                         onEdit: () => context.go('/products/${item.id}/edit'),
                         onDelete: () => notifier.softDelete(item.id),
@@ -296,11 +314,12 @@ class _ProductListScreenState extends State<ProductListScreen> {
                           ),
                         ),
                     columns: [
-                      TableColumnSpec(
-                        label: 'Артикул',
-                        sortField: 'sku',
-                        build: (p) => clipText(p.sku),
-                      ),
+                      if (!isBuyer)
+                        TableColumnSpec(
+                          label: 'Артикул',
+                          sortField: 'sku',
+                          build: (p) => clipText(p.sku),
+                        ),
                       TableColumnSpec(
                         label: 'Название',
                         sortField: 'name',
@@ -361,6 +380,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                           ),
                           EntityActions(
                             deleted: p.isDeleted,
+                            onView: () => _openProduct(p),
                             onEdit: () => context.go('/products/${p.id}/edit'),
                             onDelete: () => notifier.softDelete(p.id),
                             onRestore: () => notifier.restore(p.id),

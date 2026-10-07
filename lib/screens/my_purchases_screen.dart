@@ -53,17 +53,15 @@ class _MyPurchasesScreenState extends State<MyPurchasesScreen> {
               .map((e) => Map<String, dynamic>.from(e))
               .toList();
       final cid = user?.customerId;
-      if (cid != null) {
-        items =
-            items.where((s) {
-              final top = (s['customerId'] as num?)?.toInt();
-              final nested = (s['customer'] as Map?)?['id'] as num?;
-              final saleCid = top ?? nested?.toInt();
-              return saleCid == cid;
-            }).toList();
-      } else if (user != null) {
-        items = [];
-      }
+      items =
+          cid == null
+              ? []
+              : items.where((s) {
+                final top = (s['customerId'] as num?)?.toInt();
+                final nested = (s['customer'] as Map?)?['id'];
+                final nestedId = nested is num ? nested.toInt() : null;
+                return top == cid || nestedId == cid;
+              }).toList();
       if (!mounted) return;
       setState(() {
         _customer = customer;

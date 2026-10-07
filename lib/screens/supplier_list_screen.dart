@@ -10,6 +10,7 @@ import '../core/breakpoints.dart';
 import '../core/permissions.dart';
 import '../widgets/access_scope.dart';
 import '../widgets/adaptive_entity.dart';
+import '../widgets/record_dialog.dart';
 import '../widgets/entity_table.dart';
 import '../widgets/supplier_card.dart';
 import '../widgets/list_load_body.dart';
@@ -105,6 +106,21 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
     }
   }
 
+  void _openSupplier(BuildContext context, Supplier supplier) {
+    showRecordDialog(
+      context,
+      title: supplier.name,
+      rows: [
+        ('Название', supplier.name),
+        ('Страна', supplier.country),
+        ('Контакт', supplier.contactPerson),
+        ('Телефон', supplier.phone),
+        ('Email', supplier.email),
+        ('Рейтинг', '${supplier.rating}'),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final notifier = context.watch<SupplierListNotifier>();
@@ -152,6 +168,7 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
                         supplier: s,
                         isSelected: notifier.selected.contains(s.id),
                         onToggleSelect: notifier.toggleSelection,
+                        onView: () => _openSupplier(context, s),
                         onEdit: () => context.go('/suppliers/${s.id}/edit'),
                         onDelete: () => _tryDelete(s.id, s.name),
                         onRestore: () => notifier.restore(s.id),
@@ -228,6 +245,7 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
                         (s) => [
                           EntityActions(
                             deleted: s.isDeleted,
+                            onView: () => _openSupplier(context, s),
                             onEdit: () => context.go('/suppliers/${s.id}/edit'),
                             onDelete: () => _tryDelete(s.id, s.name),
                             onRestore: () => notifier.restore(s.id),

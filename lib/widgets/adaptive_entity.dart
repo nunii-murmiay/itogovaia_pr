@@ -142,6 +142,7 @@ class CatalogItemCard extends StatelessWidget {
 
 class EntityActions extends StatelessWidget {
   final bool deleted;
+  final VoidCallback? onView;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   final VoidCallback? onRestore;
@@ -150,6 +151,7 @@ class EntityActions extends StatelessWidget {
   const EntityActions({
     super.key,
     required this.deleted,
+    this.onView,
     this.onEdit,
     this.onDelete,
     this.onRestore,
@@ -161,6 +163,12 @@ class EntityActions extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        if (onView != null)
+          IconButton(
+            tooltip: 'Просмотр карточки',
+            icon: const Icon(Icons.visibility_outlined, size: 18),
+            onPressed: onView,
+          ),
         if (!deleted && onEdit != null)
           RoleGate(
             operation: AppOperation.manageCatalog,

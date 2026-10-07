@@ -9,6 +9,7 @@ import '../core/breakpoints.dart';
 import '../core/permissions.dart';
 import '../widgets/access_scope.dart';
 import '../widgets/adaptive_entity.dart';
+import '../widgets/record_dialog.dart';
 import '../widgets/entity_table.dart';
 import '../widgets/list_load_body.dart';
 import '../widgets/pagination_bar.dart';
@@ -137,6 +138,16 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
                         onToggleSelect: () => notifier.toggleSelection(c.id),
                         actions: EntityActions(
                           deleted: c.isDeleted,
+                          onView:
+                              () => showRecordDialog(
+                                context,
+                                title: c.name,
+                                rows: [
+                                  ('Название', c.name),
+                                  ('Описание', c.description),
+                                  ('Иконка', c.iconName),
+                                ],
+                              ),
                           onEdit: () => context.go('/categories/${c.id}/edit'),
                           onDelete: () => _tryDelete(c.id, c.name),
                           onRestore: () => notifier.restore(c.id),
@@ -194,6 +205,16 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
                         (c) => [
                           EntityActions(
                             deleted: c.isDeleted,
+                            onView:
+                                () => showRecordDialog(
+                                  context,
+                                  title: c.name,
+                                  rows: [
+                                    ('Название', c.name),
+                                    ('Описание', c.description),
+                                    ('Иконка', c.iconName),
+                                  ],
+                                ),
                             onEdit:
                                 () => context.go('/categories/${c.id}/edit'),
                             onDelete: () => _tryDelete(c.id, c.name),

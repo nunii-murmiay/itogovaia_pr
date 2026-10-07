@@ -231,9 +231,8 @@ class AuthNotifier extends ChangeNotifier {
 
   bool _isJwtExpired(String token) {
     try {
-      final parts = token.split('.');
-      if (parts.length < 2) return true;
-      final body = parts[1];
+      // Учебный токен: полезная часть стоит первой, подпись — второй.
+      final body = token.split('.').first;
       final normalized = base64Url.normalize(body);
       final map = jsonDecode(utf8.decode(base64Url.decode(normalized))) as Map;
       final exp = map['exp'];

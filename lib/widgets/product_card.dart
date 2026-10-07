@@ -6,7 +6,9 @@ class ProductCard extends StatelessWidget {
   final Product product;
   final String supplierName;
   final bool isSelected;
+  final bool showSku;
   final ValueChanged<int>? onToggleSelect;
+  final VoidCallback? onView;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   final VoidCallback? onRestore;
@@ -17,7 +19,9 @@ class ProductCard extends StatelessWidget {
     required this.product,
     required this.supplierName,
     this.isSelected = false,
+    this.showSku = true,
     this.onToggleSelect,
+    this.onView,
     this.onEdit,
     this.onDelete,
     this.onRestore,
@@ -77,13 +81,18 @@ class ProductCard extends StatelessWidget {
                 ),
               ],
             ),
-            clipText('Артикул: ${product.sku} · $supplierName'),
+            clipText(
+              showSku
+                  ? 'Артикул: ${product.sku} · $supplierName'
+                  : supplierName,
+            ),
             Text('Склад: ${product.stock} шт. · ★ ${product.rating}'),
             const SizedBox(height: 8),
             Align(
               alignment: Alignment.centerRight,
               child: EntityActions(
                 deleted: product.isDeleted,
+                onView: onView,
                 onEdit: onEdit,
                 onDelete: onDelete,
                 onRestore: onRestore,
