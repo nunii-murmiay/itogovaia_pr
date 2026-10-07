@@ -120,7 +120,7 @@ void main() {
     await tester.pumpWidget(
       const MaterialApp(
         home: AccessScope(
-          role: ShopRole.customer,
+          role: Role.reader,
           child: Scaffold(
             body: EntityActions(
               deleted: true,
@@ -140,7 +140,7 @@ void main() {
     await tester.pumpWidget(
       const MaterialApp(
         home: AccessScope(
-          role: ShopRole.admin,
+          role: Role.admin,
           child: Scaffold(
             body: EntityActions(
               deleted: true,

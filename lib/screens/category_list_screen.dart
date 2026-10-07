@@ -6,6 +6,8 @@ import '../models/category_query.dart';
 import '../repositories/product_repository.dart';
 import '../state/category_list_notifier.dart';
 import '../core/breakpoints.dart';
+import '../core/permissions.dart';
+import '../widgets/access_scope.dart';
 import '../widgets/adaptive_entity.dart';
 import '../widgets/entity_table.dart';
 import '../widgets/list_load_body.dart';
@@ -90,8 +92,11 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
     final narrow = MediaQuery.sizeOf(context).width < Breakpoints.phone;
     return Scaffold(
       appBar: AppBar(title: const Text('Категории')),
-      floatingActionButton: ResponsiveAddButton(
-        onPressed: () => context.go('/categories/new'),
+      floatingActionButton: RoleGate(
+        operation: AppOperation.manageCatalog,
+        child: ResponsiveAddButton(
+          onPressed: () => context.go('/categories/new'),
+        ),
       ),
       body: Padding(
         padding: EdgeInsets.all(narrow ? 8 : 16),

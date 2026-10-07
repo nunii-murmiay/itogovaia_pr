@@ -169,9 +169,12 @@ class _ProductListScreenState extends State<ProductListScreen> {
           ),
         ],
       ),
-      floatingActionButton: ResponsiveAddButton(
-        onPressed: () => context.go('/products/new'),
-        label: 'Добавить товар',
+      floatingActionButton: RoleGate(
+        operation: AppOperation.manageCatalog,
+        child: ResponsiveAddButton(
+          onPressed: () => context.go('/products/new'),
+          label: 'Добавить товар',
+        ),
       ),
       body: Padding(
         padding: EdgeInsets.all(phone ? 8 : 16),
@@ -214,16 +217,22 @@ class _ProductListScreenState extends State<ProductListScreen> {
                   children: [
                     Text('Выбрано: ${notifier.selected.length}'),
                     if (notifier.query.includeDeleted)
-                      TextButton(
-                        onPressed: () => notifier.restoreSelected(),
-                        child: const Text('Восстановить'),
+                      RoleGate(
+                        operation: AppOperation.restoreDeleted,
+                        child: TextButton(
+                          onPressed: () => notifier.restoreSelected(),
+                          child: const Text('Восстановить'),
+                        ),
                       ),
-                    FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: theme.colorScheme.error,
+                    RoleGate(
+                      operation: AppOperation.manageCatalog,
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: theme.colorScheme.error,
+                        ),
+                        onPressed: () => notifier.deleteSelected(),
+                        child: const Text('Удалить'),
                       ),
-                      onPressed: () => notifier.deleteSelected(),
-                      child: const Text('Удалить'),
                     ),
                   ],
                 ),

@@ -5,56 +5,32 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('Права ролей зоомагазина', () {
     test('покупатель видит каталог, но не управляет им', () {
-      expect(
-        Permissions.can(ShopRole.customer, AppOperation.viewCatalog),
-        isTrue,
-      );
-      expect(
-        Permissions.can(ShopRole.customer, AppOperation.manageCatalog),
-        isFalse,
-      );
+      expect(Permissions.can(Role.reader, AppOperation.viewCatalog), isTrue);
+      expect(Permissions.can(Role.reader, AppOperation.manageCatalog), isFalse);
     });
 
     test('покупатель не оформляет продажу и не удаляет навсегда', () {
-      expect(
-        Permissions.can(ShopRole.customer, AppOperation.createSale),
-        isFalse,
-      );
-      expect(
-        Permissions.can(ShopRole.customer, AppOperation.hardDelete),
-        isFalse,
-      );
+      expect(Permissions.can(Role.reader, AppOperation.createSale), isFalse);
+      expect(Permissions.can(Role.reader, AppOperation.hardDelete), isFalse);
     });
 
     test('менеджер ведёт каталог и продаёт, но не стирает запись', () {
       expect(
-        Permissions.can(ShopRole.manager, AppOperation.manageCatalog),
+        Permissions.can(Role.librarian, AppOperation.manageCatalog),
         isTrue,
       );
+      expect(Permissions.can(Role.librarian, AppOperation.createSale), isTrue);
+      expect(Permissions.can(Role.librarian, AppOperation.hardDelete), isFalse);
       expect(
-        Permissions.can(ShopRole.manager, AppOperation.createSale),
-        isTrue,
-      );
-      expect(
-        Permissions.can(ShopRole.manager, AppOperation.hardDelete),
-        isFalse,
-      );
-      expect(
-        Permissions.can(ShopRole.manager, AppOperation.restoreDeleted),
+        Permissions.can(Role.librarian, AppOperation.restoreDeleted),
         isFalse,
       );
     });
 
     test('только администратор удаляет навсегда и восстанавливает', () {
-      expect(Permissions.can(ShopRole.admin, AppOperation.hardDelete), isTrue);
-      expect(
-        Permissions.can(ShopRole.admin, AppOperation.restoreDeleted),
-        isTrue,
-      );
-      expect(
-        Permissions.can(ShopRole.admin, AppOperation.manageCustomers),
-        isTrue,
-      );
+      expect(Permissions.can(Role.admin, AppOperation.hardDelete), isTrue);
+      expect(Permissions.can(Role.admin, AppOperation.restoreDeleted), isTrue);
+      expect(Permissions.can(Role.admin, AppOperation.manageCustomers), isTrue);
     });
 
     test('гость уходит на вход с обратным адресом', () {
@@ -73,7 +49,7 @@ void main() {
         Permissions.redirectForPath(
           path: '/customers/new',
           authenticated: true,
-          role: ShopRole.customer,
+          role: Role.reader,
         ),
         '/denied',
       );
@@ -84,7 +60,7 @@ void main() {
         Permissions.redirectForPath(
           path: '/brands',
           authenticated: true,
-          role: ShopRole.manager,
+          role: Role.librarian,
         ),
         isNull,
       );

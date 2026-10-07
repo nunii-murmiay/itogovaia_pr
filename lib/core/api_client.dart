@@ -1,9 +1,16 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+
+import '../state/auth_notifier.dart';
 import 'api_exceptions.dart';
 import 'config.dart';
 
-Dio buildDio({String? Function()? tokenProvider}) {
+typedef TokenProvider = String? Function();
+
+Dio buildDio({
+  TokenProvider? tokenProvider,
+  AuthNotifier? Function()? authProvider,
+}) {
   final dio = Dio(
     BaseOptions(
       baseUrl: apiBaseUrl,
@@ -26,13 +33,42 @@ Dio buildDio({String? Function()? tokenProvider}) {
         }
         return handler.next(options);
       },
-      onResponse: (response, handler) {
+      onResponse: (response, handler) async {
         if (kDebugMode) {
           debugPrint(
             '[API] ← ${response.statusCode} ${response.requestOptions.uri}',
           );
         }
         final status = response.statusCode ?? 0;
+        final path = response.requestOptions.path;
+        final alreadyRetried =
+            response.requestOptions.extra['authRetried'] == true;
+        if (status == 401 &&
+            authProvider != null &&
+            !path.contains('/auth/') &&
+            !alreadyRetried) {
+          final auth = authProvider();
+          if (auth != null) {
+            final ok = await auth.refreshSession();
+            if (ok) {
+              final req = response.requestOptions;
+              req.headers['Authorization'] = 'Bearer ${auth.accessToken}';
+              req.extra['authRetried'] = true;
+              try {
+                final clone = await dio.fetch(req);
+                return handler.resolve(clone);
+              } catch (e) {
+                return handler.reject(
+                  DioException(
+                    requestOptions: req,
+                    error: e,
+                    type: DioExceptionType.unknown,
+                  ),
+                );
+              }
+            }
+          }
+        }
         if (status >= 400) {
           return handler.reject(
             DioException(

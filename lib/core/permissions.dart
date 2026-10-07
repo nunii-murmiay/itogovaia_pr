@@ -1,53 +1,67 @@
 import '../models/role.dart';
 
-/// Операции интерфейса зоомагазина.
 enum AppOperation {
   viewCatalog,
+  viewOwnPurchases,
   manageCatalog,
   manageCustomers,
   createSale,
   hardDelete,
   restoreDeleted,
+  manageUsers,
+  viewStats,
 }
 
 class Permissions {
   const Permissions._();
 
-  static bool can(ShopRole role, AppOperation op) {
+  static bool can(Role role, AppOperation op) {
     return switch (op) {
       AppOperation.viewCatalog => true,
-      AppOperation.manageCatalog => role.atLeast(ShopRole.manager),
-      AppOperation.manageCustomers => role.atLeast(ShopRole.manager),
-      AppOperation.createSale => role.atLeast(ShopRole.manager),
-      AppOperation.hardDelete => role == ShopRole.admin,
-      AppOperation.restoreDeleted => role == ShopRole.admin,
+      AppOperation.viewOwnPurchases => role == Role.reader,
+      AppOperation.manageCatalog => role.atLeast(Role.librarian),
+      AppOperation.manageCustomers => role.atLeast(Role.librarian),
+      AppOperation.createSale => role.atLeast(Role.librarian),
+      AppOperation.hardDelete => role.atLeast(Role.admin),
+      AppOperation.restoreDeleted => role.atLeast(Role.admin),
+      AppOperation.manageUsers => role.atLeast(Role.admin),
+      AppOperation.viewStats => role.atLeast(Role.admin),
     };
   }
 
-  /// Куда отправить пользователя, если маршрут ему недоступен.
-  /// `null` — можно оставаться на месте.
   static String? redirectForPath({
     required String path,
     required bool authenticated,
-    required ShopRole? role,
+    required Role? role,
   }) {
+    final isAuthRoute =
+        path.startsWith('/login') || path.startsWith('/register');
+
     if (!authenticated) {
-      if (path.startsWith('/login')) return null;
+      if (isAuthRoute || path.startsWith('/denied')) return null;
       final from = Uri.encodeComponent(path);
       return '/login?from=$from';
     }
 
-    if (path.startsWith('/login')) return '/products';
+    if (isAuthRoute) return '/products';
 
-    final needsManager =
+    if (path.startsWith('/my-purchases')) {
+      if (role != Role.reader) return '/denied';
+      return null;
+    }
+    if (path.startsWith('/users') || path.startsWith('/stats')) {
+      if (role == null || !role.atLeast(Role.admin)) return '/denied';
+      return null;
+    }
+    if (path.startsWith('/sales') ||
         path.startsWith('/customers') ||
         path.startsWith('/suppliers') ||
         path.startsWith('/brands') ||
         path.startsWith('/categories') ||
         path.contains('/new') ||
-        path.contains('/edit');
-    if (needsManager && (role == null || !role.atLeast(ShopRole.manager))) {
-      return '/denied';
+        path.contains('/edit')) {
+      if (role == null || !role.atLeast(Role.librarian)) return '/denied';
+      return null;
     }
     return null;
   }

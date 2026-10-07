@@ -15,24 +15,10 @@ void main() {
   late AuthSession auth;
   late ApiProductRepository repo;
 
-  void stubLogin() {
-    adapter.onPost(
-      '/auth/login',
-      (server) => server.reply(200, {
-        'accessToken': 'test-token',
-        'refreshToken': 'refresh',
-        'expiresIn': 900,
-        'user': {'id': 1, 'username': 'admin', 'role': 'admin'},
-      }),
-      data: Matchers.any,
-    );
-  }
-
   setUp(() {
+    auth = AuthSession.fixed('test-token');
     dio = buildDio(tokenProvider: () => auth.accessToken);
     adapter = DioAdapter(dio: dio, matcher: const UrlRequestMatcher());
-    auth = AuthSession(dio);
-    stubLogin();
     repo = ApiProductRepository(dio, auth);
   });
 

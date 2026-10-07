@@ -5,6 +5,8 @@ import '../models/customer.dart';
 import '../models/customer_query.dart';
 import '../state/customer_list_notifier.dart';
 import '../core/breakpoints.dart';
+import '../core/permissions.dart';
+import '../widgets/access_scope.dart';
 import '../widgets/adaptive_entity.dart';
 import '../widgets/entity_table.dart';
 import '../widgets/list_load_body.dart';
@@ -64,8 +66,11 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     final narrow = MediaQuery.sizeOf(context).width < Breakpoints.phone;
     return Scaffold(
       appBar: AppBar(title: const Text('Клиенты')),
-      floatingActionButton: ResponsiveAddButton(
-        onPressed: () => context.go('/customers/new'),
+      floatingActionButton: RoleGate(
+        operation: AppOperation.manageCustomers,
+        child: ResponsiveAddButton(
+          onPressed: () => context.go('/customers/new'),
+        ),
       ),
       body: Padding(
         padding: EdgeInsets.all(narrow ? 8 : 16),

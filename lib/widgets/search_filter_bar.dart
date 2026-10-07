@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+
+import '../core/permissions.dart';
+import 'access_scope.dart';
 import '../models/brand.dart';
 import '../models/brand_query.dart';
 import '../models/category.dart';
@@ -169,11 +172,14 @@ class ProductFilterPanel extends StatelessWidget {
                 onChanged: (v) => onQueryChanged(query.copyWith(supplierId: v)),
               ),
             ),
-            FilterChip(
-              label: const Text('Удалённые'),
-              selected: query.includeDeleted,
-              onSelected:
-                  (v) => onQueryChanged(query.copyWith(includeDeleted: v)),
+            RoleGate(
+              operation: AppOperation.restoreDeleted,
+              child: FilterChip(
+                label: const Text('Удалённые'),
+                selected: query.includeDeleted,
+                onSelected:
+                    (v) => onQueryChanged(query.copyWith(includeDeleted: v)),
+              ),
             ),
             TextButton(onPressed: onReset, child: const Text('Сбросить')),
           ],
@@ -235,11 +241,14 @@ class SupplierFilterPanel extends StatelessWidget {
                 onChanged: (v) => onQueryChanged(query.copyWith(country: v)),
               ),
             ),
-            FilterChip(
-              label: const Text('Удалённые'),
-              selected: query.includeDeleted,
-              onSelected:
-                  (v) => onQueryChanged(query.copyWith(includeDeleted: v)),
+            RoleGate(
+              operation: AppOperation.restoreDeleted,
+              child: FilterChip(
+                label: const Text('Удалённые'),
+                selected: query.includeDeleted,
+                onSelected:
+                    (v) => onQueryChanged(query.copyWith(includeDeleted: v)),
+              ),
             ),
             TextButton(onPressed: onReset, child: const Text('Сбросить')),
           ],
@@ -269,11 +278,14 @@ class BrandFilterPanel extends StatelessWidget {
         child: Wrap(
           spacing: 16,
           children: [
-            FilterChip(
-              label: const Text('Удалённые'),
-              selected: query.includeDeleted,
-              onSelected:
-                  (v) => onQueryChanged(query.copyWith(includeDeleted: v)),
+            RoleGate(
+              operation: AppOperation.restoreDeleted,
+              child: FilterChip(
+                label: const Text('Удалённые'),
+                selected: query.includeDeleted,
+                onSelected:
+                    (v) => onQueryChanged(query.copyWith(includeDeleted: v)),
+              ),
             ),
             TextButton(onPressed: onReset, child: const Text('Сбросить')),
           ],
@@ -303,11 +315,14 @@ class CategoryFilterPanel extends StatelessWidget {
         child: Wrap(
           spacing: 16,
           children: [
-            FilterChip(
-              label: const Text('Удалённые'),
-              selected: query.includeDeleted,
-              onSelected:
-                  (v) => onQueryChanged(query.copyWith(includeDeleted: v)),
+            RoleGate(
+              operation: AppOperation.restoreDeleted,
+              child: FilterChip(
+                label: const Text('Удалённые'),
+                selected: query.includeDeleted,
+                onSelected:
+                    (v) => onQueryChanged(query.copyWith(includeDeleted: v)),
+              ),
             ),
             TextButton(onPressed: onReset, child: const Text('Сбросить')),
           ],
@@ -355,11 +370,14 @@ class CustomerFilterPanel extends StatelessWidget {
                 onChanged: (v) => onQueryChanged(query.copyWith(cardLevel: v)),
               ),
             ),
-            FilterChip(
-              label: const Text('Удалённые'),
-              selected: query.includeDeleted,
-              onSelected:
-                  (v) => onQueryChanged(query.copyWith(includeDeleted: v)),
+            RoleGate(
+              operation: AppOperation.restoreDeleted,
+              child: FilterChip(
+                label: const Text('Удалённые'),
+                selected: query.includeDeleted,
+                onSelected:
+                    (v) => onQueryChanged(query.copyWith(includeDeleted: v)),
+              ),
             ),
             TextButton(onPressed: onReset, child: const Text('Сбросить')),
           ],

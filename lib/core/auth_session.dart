@@ -1,27 +1,16 @@
-import 'package:dio/dio.dart';
-import 'api_client.dart';
+import '../state/auth_notifier.dart';
 
-/// Учебная сессия: входим как admin (все CRUD-операции доступны).
 class AuthSession {
-  AuthSession(this._dio);
+  AuthSession(this._auth) : _fixedToken = null;
 
-  final Dio _dio;
-  String? _accessToken;
+  AuthSession.fixed(String? token) : _auth = null, _fixedToken = token;
 
-  String? get accessToken => _accessToken;
+  final AuthNotifier? _auth;
+  final String? _fixedToken;
 
-  Future<void> ensureLibrarian() => ensureLoggedIn();
-  Future<void> ensureAdmin() => ensureLoggedIn();
+  String? get accessToken => _auth?.accessToken ?? _fixedToken;
 
-  Future<void> ensureLoggedIn() async {
-    if (_accessToken != null) return;
-    final response = await guard(() async {
-      return _dio.post(
-        '/auth/login',
-        data: {'username': 'admin', 'password': 'admin123'},
-      );
-    });
-    final data = response.data as Map<String, dynamic>;
-    _accessToken = data['accessToken'] as String?;
-  }
+  Future<void> ensureLibrarian() async {}
+  Future<void> ensureAdmin() async {}
+  Future<void> ensureLoggedIn({bool force = false}) async {}
 }
