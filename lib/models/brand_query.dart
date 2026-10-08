@@ -32,7 +32,8 @@ class BrandQuery {
     return BrandQuery(
       search: search ?? this.search,
       country: country == _unset ? this.country : country as String?,
-      supplierId: supplierId == _unset ? this.supplierId : supplierId as String?,
+      supplierId:
+          supplierId == _unset ? this.supplierId : supplierId as String?,
       sortField: sortField ?? this.sortField,
       sortAscending: sortAscending ?? this.sortAscending,
       page: page ?? 1,

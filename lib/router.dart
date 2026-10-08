@@ -80,9 +80,7 @@ GoRouter createRouter(AuthNotifier auth) {
               GoRoute(
                 path: ':id/edit',
                 builder:
-                    (c, s) => ProductFormScreen(
-                      id: s.pathParameters['id'],
-                    ),
+                    (c, s) => ProductFormScreen(id: s.pathParameters['id']),
               ),
             ],
           ),

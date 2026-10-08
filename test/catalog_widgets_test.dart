@@ -163,8 +163,10 @@ class _FakeProducts implements ProductRepository {
   Future<Product> create(Product product) => throw UnimplementedError();
 
   @override
-  Future<int> countByBrand(String brandId, {bool includeDeleted = false}) async =>
-      0;
+  Future<int> countByBrand(
+    String brandId, {
+    bool includeDeleted = false,
+  }) async => 0;
 
   @override
   Future<int> countByCategory(

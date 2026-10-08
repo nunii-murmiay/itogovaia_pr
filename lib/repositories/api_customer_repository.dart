@@ -81,33 +81,32 @@ class ApiCustomerRepository implements CustomerRepository {
               ? null
               : cards.keys.toSet();
 
-      final parts = <String>[
-        if (q.search.trim().isNotEmpty)
-          pbSearchFilter(q.search, const ['fullName', 'email', 'phone']),
-      ].where((e) => e.isNotEmpty).toList();
+      final parts =
+          <String>[
+            if (q.search.trim().isNotEmpty)
+              pbSearchFilter(q.search, const ['fullName', 'email', 'phone']),
+          ].where((e) => e.isNotEmpty).toList();
 
       final response = await _dio.get(
         _path,
-        queryParameters: PbListQuery(
-          page: q.page,
-          perPage: q.size,
-          sort: pbSort(q.sortField, q.sortAscending),
-          filterParts: parts,
-          includeDeleted: q.includeDeleted,
-        ).toParams(),
+        queryParameters:
+            PbListQuery(
+              page: q.page,
+              perPage: q.size,
+              sort: pbSort(q.sortField, q.sortAscending),
+              filterParts: parts,
+              includeDeleted: q.includeDeleted,
+            ).toParams(),
         cancelToken: token,
       );
       final mapped = pbPageResult(
         Map<String, dynamic>.from(response.data as Map),
       );
       var items =
-          (mapped['items'] as List)
-              .whereType<Map>()
-              .map((e) {
-                final id = pbId(e['id']);
-                return _map(Map<String, dynamic>.from(e), cards[id]);
-              })
-              .toList();
+          (mapped['items'] as List).whereType<Map>().map((e) {
+            final id = pbId(e['id']);
+            return _map(Map<String, dynamic>.from(e), cards[id]);
+          }).toList();
       if (allowedIds != null) {
         items = items.where((c) => allowedIds.contains(c.id)).toList();
       }
@@ -237,10 +236,8 @@ class ApiCustomerRepository implements CustomerRepository {
   Future<void> restore(String id) async {
     await _auth.ensureAdmin();
     await guard(
-      () => _dio.patch(
-        '$_path/$id',
-        data: {'deleted': false, 'deletedAt': null},
-      ),
+      () =>
+          _dio.patch('$_path/$id', data: {'deleted': false, 'deletedAt': null}),
     );
   }
 
@@ -347,9 +344,10 @@ class ApiSalesRepository {
                 .whereType<Map>()
                 .map((e) {
                   final m = Map<String, dynamic>.from(e);
-                  final expand = m['expand'] is Map
-                      ? Map<String, dynamic>.from(m['expand'] as Map)
-                      : const <String, dynamic>{};
+                  final expand =
+                      m['expand'] is Map
+                          ? Map<String, dynamic>.from(m['expand'] as Map)
+                          : const <String, dynamic>{};
                   return {
                     ...m,
                     'product': expand['product'] ?? m['product'],
@@ -358,9 +356,10 @@ class ApiSalesRepository {
                   };
                 })
                 .toList();
-        final expand = sale['expand'] is Map
-            ? Map<String, dynamic>.from(sale['expand'] as Map)
-            : const <String, dynamic>{};
+        final expand =
+            sale['expand'] is Map
+                ? Map<String, dynamic>.from(sale['expand'] as Map)
+                : const <String, dynamic>{};
         result.add({
           'id': saleId,
           'customerId': pbId(sale['customer']),
@@ -369,8 +368,7 @@ class ApiSalesRepository {
           'pointsEarned': sale['pointsEarned'],
           'items': lineItems,
           'product': lineItems.isNotEmpty ? lineItems.first['product'] : null,
-          'quantity':
-              lineItems.isNotEmpty ? lineItems.first['quantity'] : null,
+          'quantity': lineItems.isNotEmpty ? lineItems.first['quantity'] : null,
         });
       }
       return result;

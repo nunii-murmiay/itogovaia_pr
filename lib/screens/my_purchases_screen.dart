@@ -37,9 +37,7 @@ class _MyPurchasesScreenState extends State<MyPurchasesScreen> {
       final salesRepo = context.read<ApiSalesRepository>();
       Customer? customer;
       if (user?.customerId != null) {
-        customer = await customerRepo.findById(
-          user!.customerId!,
-        );
+        customer = await customerRepo.findById(user!.customerId!);
       }
 
       var items = await salesRepo.listSales();

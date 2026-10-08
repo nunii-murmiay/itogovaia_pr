@@ -90,10 +90,8 @@ ApiException mapHttpError(int status, dynamic body) {
               ? pbId(body['productId'])
               : null,
     ),
-    400 || 422 => ValidationException(
-      message ?? 'Ошибка валидации',
-      fieldErrors,
-    ),
+    400 ||
+    422 => ValidationException(message ?? 'Ошибка валидации', fieldErrors),
     _ => ServerException(message ?? 'Неизвестная ошибка (код $status).'),
   };
 }

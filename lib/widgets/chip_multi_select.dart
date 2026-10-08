@@ -58,7 +58,9 @@ class ChipMultiSelectFormField extends StatelessWidget {
                             label: Text(o.name),
                             selected: selected,
                             onSelected: (_) {
-                              final next = [...(field.value ?? const <String>[])];
+                              final next = [
+                                ...(field.value ?? const <String>[]),
+                              ];
                               selected ? next.remove(o.id) : next.add(o.id);
                               field.didChange(next);
                               onChanged(next);

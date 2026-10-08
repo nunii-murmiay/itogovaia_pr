@@ -26,26 +26,28 @@ class ApiBrandRepository implements BrandRepository {
     _findToken?.cancel('устаревший поиск');
     _findToken = CancelToken();
     final token = _findToken!;
-    final parts = <String>[
-      if (q.search.trim().isNotEmpty)
-        pbSearchFilter(q.search, const ['name', 'country', 'description']),
-      if (q.country != null && q.country!.isNotEmpty)
-        'country = "${pbEscape(q.country!)}"',
-      if (q.supplierId != null && q.supplierId!.isNotEmpty)
-        pbRelationContains('suppliers', q.supplierId),
-    ].where((e) => e.isNotEmpty).toList();
+    final parts =
+        <String>[
+          if (q.search.trim().isNotEmpty)
+            pbSearchFilter(q.search, const ['name', 'country', 'description']),
+          if (q.country != null && q.country!.isNotEmpty)
+            'country = "${pbEscape(q.country!)}"',
+          if (q.supplierId != null && q.supplierId!.isNotEmpty)
+            pbRelationContains('suppliers', q.supplierId),
+        ].where((e) => e.isNotEmpty).toList();
 
     return guardRead(() async {
       final response = await _dio.get(
         _path,
-        queryParameters: PbListQuery(
-          page: q.page,
-          perPage: q.size,
-          sort: pbSort(q.sortField, q.sortAscending),
-          filterParts: parts,
-          expand: 'suppliers',
-          includeDeleted: q.includeDeleted,
-        ).toParams(),
+        queryParameters:
+            PbListQuery(
+              page: q.page,
+              perPage: q.size,
+              sort: pbSort(q.sortField, q.sortAscending),
+              filterParts: parts,
+              expand: 'suppliers',
+              includeDeleted: q.includeDeleted,
+            ).toParams(),
         cancelToken: token,
       );
       final mapped = pbPageResult(
@@ -146,10 +148,8 @@ class ApiBrandRepository implements BrandRepository {
   Future<void> restore(String id) async {
     await _auth.ensureAdmin();
     await guard(
-      () => _dio.patch(
-        '$_path/$id',
-        data: {'deleted': false, 'deletedAt': null},
-      ),
+      () =>
+          _dio.patch('$_path/$id', data: {'deleted': false, 'deletedAt': null}),
     );
   }
 

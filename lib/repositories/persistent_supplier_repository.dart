@@ -26,10 +26,12 @@ class PersistentSupplierRepository implements SupplierRepository {
       onMigrated: onStorageNotice,
     );
     _items = _store.restore();
-    _nextId = _items.fold<int>(0, (m, e) {
-      final n = int.tryParse(e.id) ?? 0;
-      return n > m ? n : m;
-    }) + 1;
+    _nextId =
+        _items.fold<int>(0, (m, e) {
+          final n = int.tryParse(e.id) ?? 0;
+          return n > m ? n : m;
+        }) +
+        1;
   }
 
   Future<void> _save() => _store.persist(_items);

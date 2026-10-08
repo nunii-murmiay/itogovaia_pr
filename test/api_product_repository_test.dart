@@ -1,4 +1,4 @@
-﻿import 'package:dio/dio.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http_mock_adapter/http_mock_adapter.dart';
 
@@ -30,7 +30,10 @@ void main() {
         },
       ),
     );
-    adapter = DioAdapter(dio: dio, matcher: const UrlRequestMatcher(matchMethod: true));
+    adapter = DioAdapter(
+      dio: dio,
+      matcher: const UrlRequestMatcher(matchMethod: true),
+    );
     repo = ApiProductRepository(dio, auth);
   });
 
@@ -95,12 +98,7 @@ void main() {
     );
 
     await repo.find(
-      const ProductQuery(
-        page: 2,
-        size: 5,
-        search: 'корм',
-        supplierId: 'sup2',
-      ),
+      const ProductQuery(page: 2, size: 5, search: 'корм', supplierId: 'sup2'),
     );
 
     expect(sent, hasLength(1));
@@ -267,4 +265,3 @@ void main() {
     );
   });
 }
-

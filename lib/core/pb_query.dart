@@ -35,7 +35,8 @@ class PbListQuery {
 
 String pbSort(String field, bool ascending) => ascending ? field : '-$field';
 
-String pbEscape(String value) => value.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
+String pbEscape(String value) =>
+    value.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
 
 String pbSearchFilter(String search, List<String> fields) {
   final q = search.trim();
@@ -68,9 +69,10 @@ Map<String, dynamic> pbRecordToApp(
   String? brandsKey = 'brands',
   String? categoriesKey = 'categories',
 }) {
-  final expand = record['expand'] is Map
-      ? Map<String, dynamic>.from(record['expand'] as Map)
-      : const <String, dynamic>{};
+  final expand =
+      record['expand'] is Map
+          ? Map<String, dynamic>.from(record['expand'] as Map)
+          : const <String, dynamic>{};
 
   final deletedAt = record['deletedAt'];
   final deleted = record['deleted'] == true;

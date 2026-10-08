@@ -35,18 +35,19 @@ class ApiProductRepository implements ProductRepository {
   };
 
   PbListQuery _q(ProductQuery q) {
-    final parts = <String>[
-      if (q.search.trim().isNotEmpty)
-        pbSearchFilter(q.search, const ['name', 'sku']),
-      if (q.supplierId != null && q.supplierId!.isNotEmpty)
-        pbRelationEquals('supplier', q.supplierId),
-      if (q.brandId != null && q.brandId!.isNotEmpty)
-        pbRelationContains('brands', q.brandId),
-      if (q.categoryId != null && q.categoryId!.isNotEmpty)
-        pbRelationContains('categories', q.categoryId),
-      if (q.priceFrom != null) 'price >= ${q.priceFrom}',
-      if (q.priceTo != null) 'price <= ${q.priceTo}',
-    ].where((e) => e.isNotEmpty).toList();
+    final parts =
+        <String>[
+          if (q.search.trim().isNotEmpty)
+            pbSearchFilter(q.search, const ['name', 'sku']),
+          if (q.supplierId != null && q.supplierId!.isNotEmpty)
+            pbRelationEquals('supplier', q.supplierId),
+          if (q.brandId != null && q.brandId!.isNotEmpty)
+            pbRelationContains('brands', q.brandId),
+          if (q.categoryId != null && q.categoryId!.isNotEmpty)
+            pbRelationContains('categories', q.categoryId),
+          if (q.priceFrom != null) 'price >= ${q.priceFrom}',
+          if (q.priceTo != null) 'price <= ${q.priceTo}',
+        ].where((e) => e.isNotEmpty).toList();
 
     return PbListQuery(
       page: q.page,
@@ -161,10 +162,8 @@ class ApiProductRepository implements ProductRepository {
   Future<void> restore(String id) async {
     await _auth.ensureAdmin();
     await guard(
-      () => _dio.patch(
-        '$_path/$id',
-        data: {'deleted': false, 'deletedAt': null},
-      ),
+      () =>
+          _dio.patch('$_path/$id', data: {'deleted': false, 'deletedAt': null}),
     );
   }
 
