@@ -1,7 +1,7 @@
 class BrandQuery {
   final String search;
   final String? country;
-  final int? supplierId;
+  final String? supplierId;
   final String sortField;
   final bool sortAscending;
   final int page;
@@ -32,7 +32,7 @@ class BrandQuery {
     return BrandQuery(
       search: search ?? this.search,
       country: country == _unset ? this.country : country as String?,
-      supplierId: supplierId == _unset ? this.supplierId : supplierId as int?,
+      supplierId: supplierId == _unset ? this.supplierId : supplierId as String?,
       sortField: sortField ?? this.sortField,
       sortAscending: sortAscending ?? this.sortAscending,
       page: page ?? 1,

@@ -1,10 +1,8 @@
 import 'dart:async';
 
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../core/api_client.dart';
 import '../core/api_exceptions.dart';
 import '../models/customer.dart';
 import '../models/product.dart';
@@ -13,7 +11,7 @@ import '../repositories/customer_repository.dart';
 import '../repositories/product_repository.dart';
 
 class _CartLine {
-  int? productId;
+  String? productId;
   final TextEditingController qty;
 
   _CartLine({this.productId, String qtyText = '1'})
@@ -35,9 +33,9 @@ class _SalesScreenState extends State<SalesScreen> {
   List<Map<String, dynamic>> _sales = [];
   List<Customer> _customers = [];
   List<Product> _products = [];
-  int? _customerId;
+  String? _customerId;
   final List<_CartLine> _lines = [];
-  final Map<int, String> _lineErrors = {};
+  final Map<String, String> _lineErrors = {};
   bool _saving = false;
   Timer? _customersTimer;
 
@@ -97,24 +95,17 @@ class _SalesScreenState extends State<SalesScreen> {
       _error = null;
     });
     try {
-      final dio = context.read<Dio>();
       final customerRepo = context.read<CustomerRepository>();
       final productRepo = context.read<ProductRepository>();
+      final salesRepo = context.read<ApiSalesRepository>();
       final customers = await customerRepo.findAll();
       final products = await productRepo.findAll();
-      final data = await guard(() async {
-        final r = await dio.get('/sales', queryParameters: {'size': 50});
-        return r.data as Map<String, dynamic>;
-      });
+      final sales = await salesRepo.listSales();
       if (!mounted) return;
       setState(() {
         _customers = customers;
         _products = products;
-        _sales =
-            (data['items'] as List? ?? const [])
-                .whereType<Map>()
-                .map((e) => Map<String, dynamic>.from(e))
-                .toList();
+        _sales = sales;
         if (_customerId == null ||
             customers.every((c) => c.id != _customerId)) {
           _customerId = customers.isNotEmpty ? customers.first.id : null;
@@ -151,7 +142,7 @@ class _SalesScreenState extends State<SalesScreen> {
   Future<void> _createSale() async {
     if (_customerId == null) return;
 
-    final toSubmit = <({int productId, int quantity})>[];
+    final toSubmit = <({String productId, int quantity})>[];
     for (final line in _lines) {
       if (line.productId == null) continue;
       final qty = int.tryParse(line.qty.text.trim()) ?? 0;
@@ -168,7 +159,7 @@ class _SalesScreenState extends State<SalesScreen> {
       return;
     }
 
-    final shortages = <int, String>{};
+    final shortages = <String, String>{};
     for (var i = 0; i < _lines.length; i++) {
       final line = _lines[i];
       if (line.productId == null) continue;
@@ -177,7 +168,7 @@ class _SalesScreenState extends State<SalesScreen> {
       final product =
           _products.where((p) => p.id == line.productId).firstOrNull;
       if (product != null && qty > product.stock) {
-        shortages[i] =
+        shortages['$i'] =
             'Недостаточно «${product.name}»: на складе ${product.stock}';
       }
     }
@@ -196,13 +187,7 @@ class _SalesScreenState extends State<SalesScreen> {
     });
     try {
       final repo = context.read<ApiSalesRepository>();
-      for (final row in toSubmit) {
-        await repo.createSale(
-          customerId: _customerId!,
-          productId: row.productId,
-          quantity: row.quantity,
-        );
-      }
+      await repo.createSale(customerId: _customerId!, items: toSubmit);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -226,7 +211,7 @@ class _SalesScreenState extends State<SalesScreen> {
               ? e.message
               : 'Недостаточно «${product.name}»: на складе ${product.stock}';
       if (index >= 0) {
-        setState(() => _lineErrors[index] = text);
+        setState(() => _lineErrors['$index'] = text);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -289,7 +274,7 @@ class _SalesScreenState extends State<SalesScreen> {
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
                           const SizedBox(height: 12),
-                          DropdownButtonFormField<int>(
+                          DropdownButtonFormField<String>(
                             // ignore: deprecated_member_use
                             value: _customerId,
                             isExpanded: true,
@@ -330,7 +315,7 @@ class _SalesScreenState extends State<SalesScreen> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       Expanded(
-                                        child: DropdownButtonFormField<int>(
+                                        child: DropdownButtonFormField<String>(
                                           // ignore: deprecated_member_use
                                           value: line.productId,
                                           isExpanded: true,
@@ -356,7 +341,7 @@ class _SalesScreenState extends State<SalesScreen> {
                                           onChanged:
                                               (v) => setState(() {
                                                 line.productId = v;
-                                                _lineErrors.remove(i);
+                                                _lineErrors.remove('$i');
                                               }),
                                         ),
                                       ),
@@ -377,13 +362,13 @@ class _SalesScreenState extends State<SalesScreen> {
                                       labelText: 'Количество',
                                       border: const OutlineInputBorder(),
                                       isDense: true,
-                                      errorText: _lineErrors[i],
+                                      errorText: _lineErrors['$i'],
                                       errorMaxLines: 3,
                                     ),
                                     keyboardType: TextInputType.number,
                                     onChanged:
                                         (_) => setState(
-                                          () => _lineErrors.remove(i),
+                                          () => _lineErrors.remove('$i'),
                                         ),
                                   ),
                                 ],
@@ -424,7 +409,8 @@ class _SalesScreenState extends State<SalesScreen> {
                         ),
                         subtitle: Text(
                           '${customer?['fullName'] ?? 'Клиент'} · '
-                          '×${s['quantity']} · ${s['totalPrice']} ₽',
+                          '×${s['quantity'] ?? '—'} · ${s['total'] ?? s['totalPrice'] ?? '—'} ₽'
+                          '${s['pointsEarned'] != null ? ' · +${s['pointsEarned']} баллов' : ''}',
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),

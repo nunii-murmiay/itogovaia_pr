@@ -1,12 +1,13 @@
+import '../core/pb_ids.dart';
 import 'role.dart';
 
 class AppUser {
-  final int id;
+  final String id;
   final String username;
   final String fullName;
   final String email;
   final Role role;
-  final int? customerId;
+  final String? customerId;
 
   const AppUser({
     required this.id,
@@ -19,12 +20,15 @@ class AppUser {
 
   factory AppUser.fromJson(Map<String, dynamic> json) {
     return AppUser(
-      id: (json['id'] as num).toInt(),
+      id: pbId(json['id']),
       username: json['username'] as String? ?? '',
       fullName: json['fullName'] as String? ?? '',
       email: json['email'] as String? ?? '',
       role: Role.fromApi(json['role'] as String?),
-      customerId: (json['customerId'] as num?)?.toInt(),
+      customerId:
+          json['customerId'] == null || json['customerId'] == ''
+              ? null
+              : pbId(json['customerId']),
     );
   }
 

@@ -1,3 +1,5 @@
+import 'pb_ids.dart';
+
 /// Исключения предметной области (виджеты не знают про Dio).
 sealed class ApiException implements Exception {
   final String message;
@@ -35,7 +37,7 @@ class NotFoundException extends ApiException {
 }
 
 class ConflictException extends ApiException {
-  final int? productId;
+  final String? productId;
 
   const ConflictException(super.message, {this.productId});
 }
@@ -51,11 +53,29 @@ class ServerException extends ApiException {
   ]);
 }
 
+Map<String, String> _pbFieldErrors(dynamic body) {
+  if (body is! Map) return const {};
+  final data = body['data'];
+  if (data is Map) {
+    return data.map((k, v) {
+      if (v is Map && v['message'] != null) {
+        return MapEntry('$k', '${v['message']}');
+      }
+      return MapEntry('$k', '$v');
+    });
+  }
+  if (body['errors'] is Map) {
+    return (body['errors'] as Map).map((k, v) => MapEntry('$k', '$v'));
+  }
+  return const {};
+}
+
 ApiException mapHttpError(int status, dynamic body) {
   final message =
       (body is Map && body['message'] is String)
           ? body['message'] as String
           : null;
+  final fieldErrors = _pbFieldErrors(body);
 
   return switch (status) {
     401 => UnauthorizedException(message ?? 'Требуется вход в систему.'),
@@ -66,15 +86,13 @@ ApiException mapHttpError(int status, dynamic body) {
     409 => ConflictException(
       message ?? 'Операция невозможна.',
       productId:
-          (body is Map && body['productId'] is num)
-              ? (body['productId'] as num).toInt()
+          (body is Map && body['productId'] != null)
+              ? pbId(body['productId'])
               : null,
     ),
-    422 => ValidationException(
+    400 || 422 => ValidationException(
       message ?? 'Ошибка валидации',
-      (body is Map && body['errors'] is Map)
-          ? (body['errors'] as Map).map((k, v) => MapEntry('$k', '$v'))
-          : const {},
+      fieldErrors,
     ),
     _ => ServerException(message ?? 'Неизвестная ошибка (код $status).'),
   };

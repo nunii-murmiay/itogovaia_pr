@@ -1,7 +1,9 @@
 import 'package:dio/dio.dart';
+
 import '../core/api_client.dart';
 import '../core/api_exceptions.dart';
 import '../core/auth_session.dart';
+import '../core/pb_query.dart';
 import '../models/brand.dart';
 import '../models/brand_query.dart';
 import '../models/page_result.dart';
@@ -13,47 +15,65 @@ class ApiBrandRepository implements BrandRepository {
   final AuthSession _auth;
   CancelToken? _findToken;
 
+  static const _path = '/collections/brands/records';
+
+  Brand _map(Map<String, dynamic> raw) =>
+      Brand.fromJson(pbRecordToApp(Map<String, dynamic>.from(raw)));
+
   @override
   Future<PageResult<Brand>> find(BrandQuery q) async {
-    await _auth.ensureLibrarian();
+    await _auth.ensureLoggedIn();
     _findToken?.cancel('устаревший поиск');
     _findToken = CancelToken();
     final token = _findToken!;
+    final parts = <String>[
+      if (q.search.trim().isNotEmpty)
+        pbSearchFilter(q.search, const ['name', 'country', 'description']),
+      if (q.country != null && q.country!.isNotEmpty)
+        'country = "${pbEscape(q.country!)}"',
+      if (q.supplierId != null && q.supplierId!.isNotEmpty)
+        pbRelationContains('suppliers', q.supplierId),
+    ].where((e) => e.isNotEmpty).toList();
+
     return guardRead(() async {
       final response = await _dio.get(
-        '/brands',
-        queryParameters: {
-          if (q.search.trim().isNotEmpty) 'search': q.search.trim(),
-          if (q.country != null) 'country': q.country,
-          if (q.supplierId != null) 'supplierId': q.supplierId,
-          'sort': '${q.sortField},${q.sortAscending ? 'asc' : 'desc'}',
-          'page': q.page,
-          'size': q.size,
-          if (q.includeDeleted) 'includeDeleted': true,
-        },
+        _path,
+        queryParameters: PbListQuery(
+          page: q.page,
+          perPage: q.size,
+          sort: pbSort(q.sortField, q.sortAscending),
+          filterParts: parts,
+          expand: 'suppliers',
+          includeDeleted: q.includeDeleted,
+        ).toParams(),
         cancelToken: token,
       );
-      final data = response.data as Map<String, dynamic>;
+      final mapped = pbPageResult(
+        Map<String, dynamic>.from(response.data as Map),
+      );
       return PageResult(
         items:
-            (data['items'] as List? ?? const [])
+            (mapped['items'] as List)
                 .whereType<Map>()
-                .map((e) => Brand.fromJson(Map<String, dynamic>.from(e)))
+                .map((e) => _map(Map<String, dynamic>.from(e)))
                 .toList(),
-        page: (data['page'] as num?)?.toInt() ?? q.page,
-        size: (data['size'] as num?)?.toInt() ?? q.size,
-        total: (data['total'] as num?)?.toInt() ?? 0,
+        page: (mapped['page'] as num).toInt(),
+        size: (mapped['size'] as num).toInt(),
+        total: (mapped['total'] as num).toInt(),
       );
     });
   }
 
   @override
-  Future<Brand?> findById(int id) async {
-    await _auth.ensureLibrarian();
+  Future<Brand?> findById(String id) async {
+    await _auth.ensureLoggedIn();
     try {
       return await guardRead(() async {
-        final r = await _dio.get('/brands/$id');
-        return Brand.fromJson(Map<String, dynamic>.from(r.data as Map));
+        final r = await _dio.get(
+          '$_path/$id',
+          queryParameters: {'expand': 'suppliers'},
+        );
+        return _map(Map<String, dynamic>.from(r.data as Map));
       });
     } on NotFoundException {
       return null;
@@ -63,23 +83,29 @@ class ApiBrandRepository implements BrandRepository {
   @override
   Future<List<Brand>> findAll({bool includeDeleted = false}) async {
     final page = await find(
-      BrandQuery(size: 100, includeDeleted: includeDeleted),
+      BrandQuery(size: 200, includeDeleted: includeDeleted),
     );
     return page.items;
   }
+
+  Map<String, dynamic> _body(Brand b) => {
+    'name': b.name,
+    'country': b.country,
+    'description': b.description,
+    'suppliers': b.supplierIds,
+    'deleted': false,
+  };
 
   @override
   Future<Brand> create(Brand brand) async {
     await _auth.ensureLibrarian();
     return guard(() async {
       final r = await _dio.post(
-        '/brands',
-        data:
-            brand.toJson()
-              ..remove('id')
-              ..remove('deletedAt'),
+        _path,
+        data: _body(brand),
+        queryParameters: {'expand': 'suppliers'},
       );
-      return Brand.fromJson(Map<String, dynamic>.from(r.data as Map));
+      return _map(Map<String, dynamic>.from(r.data as Map));
     });
   }
 
@@ -87,43 +113,58 @@ class ApiBrandRepository implements BrandRepository {
   Future<Brand> update(Brand brand) async {
     await _auth.ensureLibrarian();
     return guard(() async {
-      final body = brand.toJson()..remove('deletedAt');
-      final r = await _dio.put('/brands/${brand.id}', data: body);
-      return Brand.fromJson(Map<String, dynamic>.from(r.data as Map));
+      final r = await _dio.patch(
+        '$_path/${brand.id}',
+        data: _body(brand),
+        queryParameters: {'expand': 'suppliers'},
+      );
+      return _map(Map<String, dynamic>.from(r.data as Map));
     });
   }
 
   @override
-  Future<void> softDelete(int id) async {
+  Future<void> softDelete(String id) async {
     await _auth.ensureLibrarian();
-    await guard(() => _dio.delete('/brands/$id'));
-  }
-
-  @override
-  Future<void> hardDelete(int id) async {
-    await _auth.ensureAdmin();
     await guard(
-      () => _dio.delete('/brands/$id', queryParameters: {'hard': true}),
+      () => _dio.patch(
+        '$_path/$id',
+        data: {
+          'deleted': true,
+          'deletedAt': DateTime.now().toUtc().toIso8601String(),
+        },
+      ),
     );
   }
 
   @override
-  Future<void> restore(int id) async {
+  Future<void> hardDelete(String id) async {
     await _auth.ensureAdmin();
-    await guard(() => _dio.post('/brands/$id/restore'));
+    await guard(() => _dio.delete('$_path/$id'));
   }
 
   @override
-  Future<int> deleteMany(List<int> ids) async {
-    await _auth.ensureLibrarian();
-    return guard(() async {
-      final r = await _dio.post('/brands/bulk-delete', data: {'ids': ids});
-      return (r.data as Map)['deleted'] as int? ?? 0;
-    });
+  Future<void> restore(String id) async {
+    await _auth.ensureAdmin();
+    await guard(
+      () => _dio.patch(
+        '$_path/$id',
+        data: {'deleted': false, 'deletedAt': null},
+      ),
+    );
   }
 
   @override
-  Future<int> restoreMany(List<int> ids) async {
+  Future<int> deleteMany(List<String> ids) async {
+    var n = 0;
+    for (final id in ids) {
+      await softDelete(id);
+      n++;
+    }
+    return n;
+  }
+
+  @override
+  Future<int> restoreMany(List<String> ids) async {
     var n = 0;
     for (final id in ids) {
       await restore(id);

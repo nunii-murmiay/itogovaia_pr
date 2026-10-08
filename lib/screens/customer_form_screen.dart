@@ -10,7 +10,7 @@ import '../validation/validators.dart';
 import '../widgets/entity_form_shell.dart';
 
 class CustomerFormScreen extends StatefulWidget {
-  final int? id;
+  final String? id;
   const CustomerFormScreen({super.key, this.id});
   bool get isEditing => id != null;
 
@@ -76,7 +76,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
     setState(() => _saving = true);
     final repo = context.read<CustomerRepository>();
     final item = Customer(
-      id: _existing?.id ?? 0,
+      id: _existing?.id ?? '',
       fullName: _nameCtrl.text.trim(),
       email: _emailCtrl.text.trim(),
       phone: _phoneCtrl.text.trim(),

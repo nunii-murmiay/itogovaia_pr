@@ -12,7 +12,7 @@ import '../widgets/chip_multi_select.dart';
 import '../widgets/entity_form_shell.dart';
 
 class BrandFormScreen extends StatefulWidget {
-  final int? id;
+  final String? id;
   const BrandFormScreen({super.key, this.id});
   bool get isEditing => id != null;
 
@@ -25,7 +25,7 @@ class _BrandFormScreenState extends State<BrandFormScreen> {
   final _nameCtrl = TextEditingController();
   final _countryCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
-  List<int> _supplierIds = [];
+  List<String> _supplierIds = [];
   List<Supplier> _suppliers = [];
   bool _loading = true;
   bool _dirty = false;
@@ -70,7 +70,7 @@ class _BrandFormScreenState extends State<BrandFormScreen> {
     setState(() => _saving = true);
     final repo = context.read<BrandRepository>();
     final item = Brand(
-      id: _existing?.id ?? 0,
+      id: _existing?.id ?? '',
       name: _nameCtrl.text.trim(),
       country: _countryCtrl.text.trim(),
       description: _descCtrl.text.trim(),

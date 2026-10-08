@@ -43,9 +43,14 @@ Dio buildDio({
         final path = response.requestOptions.path;
         final alreadyRetried =
             response.requestOptions.extra['authRetried'] == true;
+        final isAuthCall =
+            path.contains('auth-with-password') ||
+            path.contains('auth-refresh') ||
+            path.contains('/shop/login') ||
+            path.contains('/shop/register');
         if (status == 401 &&
             authProvider != null &&
-            !path.contains('/auth/') &&
+            !isAuthCall &&
             !alreadyRetried) {
           final auth = authProvider();
           if (auth != null) {

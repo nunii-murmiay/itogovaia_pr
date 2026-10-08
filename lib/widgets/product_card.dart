@@ -7,7 +7,7 @@ class ProductCard extends StatelessWidget {
   final String supplierName;
   final bool isSelected;
   final bool showSku;
-  final ValueChanged<int>? onToggleSelect;
+  final ValueChanged<String>? onToggleSelect;
   final VoidCallback? onView;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;

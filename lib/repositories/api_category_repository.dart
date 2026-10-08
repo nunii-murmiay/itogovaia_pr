@@ -1,7 +1,9 @@
 import 'package:dio/dio.dart';
+
 import '../core/api_client.dart';
 import '../core/api_exceptions.dart';
 import '../core/auth_session.dart';
+import '../core/pb_query.dart';
 import '../models/category.dart';
 import '../models/category_query.dart';
 import '../models/page_result.dart';
@@ -13,48 +15,59 @@ class ApiCategoryRepository implements CategoryRepository {
   final AuthSession _auth;
   CancelToken? _findToken;
 
+  static const _path = '/collections/categories/records';
+
   @override
   Future<PageResult<ProductCategory>> find(CategoryQuery q) async {
-    await _auth.ensureLibrarian();
+    await _auth.ensureLoggedIn();
     _findToken?.cancel('устаревший поиск');
     _findToken = CancelToken();
     final token = _findToken!;
+    final parts = <String>[
+      if (q.search.trim().isNotEmpty)
+        pbSearchFilter(q.search, const ['name', 'description']),
+    ].where((e) => e.isNotEmpty).toList();
+
     return guardRead(() async {
       final response = await _dio.get(
-        '/categories',
-        queryParameters: {
-          if (q.search.trim().isNotEmpty) 'search': q.search.trim(),
-          'sort': '${q.sortField},${q.sortAscending ? 'asc' : 'desc'}',
-          'page': q.page,
-          'size': q.size,
-          if (q.includeDeleted) 'includeDeleted': true,
-        },
+        _path,
+        queryParameters: PbListQuery(
+          page: q.page,
+          perPage: q.size,
+          sort: pbSort(q.sortField, q.sortAscending),
+          filterParts: parts,
+          includeDeleted: q.includeDeleted,
+        ).toParams(),
         cancelToken: token,
       );
-      final data = response.data as Map<String, dynamic>;
+      final mapped = pbPageResult(
+        Map<String, dynamic>.from(response.data as Map),
+      );
       return PageResult(
         items:
-            (data['items'] as List? ?? const [])
+            (mapped['items'] as List)
                 .whereType<Map>()
                 .map(
-                  (e) => ProductCategory.fromJson(Map<String, dynamic>.from(e)),
+                  (e) => ProductCategory.fromJson(
+                    pbRecordToApp(Map<String, dynamic>.from(e)),
+                  ),
                 )
                 .toList(),
-        page: (data['page'] as num?)?.toInt() ?? q.page,
-        size: (data['size'] as num?)?.toInt() ?? q.size,
-        total: (data['total'] as num?)?.toInt() ?? 0,
+        page: (mapped['page'] as num).toInt(),
+        size: (mapped['size'] as num).toInt(),
+        total: (mapped['total'] as num).toInt(),
       );
     });
   }
 
   @override
-  Future<ProductCategory?> findById(int id) async {
-    await _auth.ensureLibrarian();
+  Future<ProductCategory?> findById(String id) async {
+    await _auth.ensureLoggedIn();
     try {
       return await guardRead(() async {
-        final r = await _dio.get('/categories/$id');
+        final r = await _dio.get('$_path/$id');
         return ProductCategory.fromJson(
-          Map<String, dynamic>.from(r.data as Map),
+          pbRecordToApp(Map<String, dynamic>.from(r.data as Map)),
         );
       });
     } on NotFoundException {
@@ -65,22 +78,26 @@ class ApiCategoryRepository implements CategoryRepository {
   @override
   Future<List<ProductCategory>> findAll({bool includeDeleted = false}) async {
     final page = await find(
-      CategoryQuery(size: 100, includeDeleted: includeDeleted),
+      CategoryQuery(size: 200, includeDeleted: includeDeleted),
     );
     return page.items;
   }
+
+  Map<String, dynamic> _body(ProductCategory c) => {
+    'name': c.name,
+    'description': c.description,
+    'iconName': c.iconName,
+    'deleted': false,
+  };
 
   @override
   Future<ProductCategory> create(ProductCategory category) async {
     await _auth.ensureLibrarian();
     return guard(() async {
-      final body = {
-        'name': category.name,
-        'description': category.description,
-        'iconName': category.iconName,
-      };
-      final r = await _dio.post('/categories', data: body);
-      return ProductCategory.fromJson(Map<String, dynamic>.from(r.data as Map));
+      final r = await _dio.post(_path, data: _body(category));
+      return ProductCategory.fromJson(
+        pbRecordToApp(Map<String, dynamic>.from(r.data as Map)),
+      );
     });
   }
 
@@ -88,47 +105,56 @@ class ApiCategoryRepository implements CategoryRepository {
   Future<ProductCategory> update(ProductCategory category) async {
     await _auth.ensureLibrarian();
     return guard(() async {
-      final body = {
-        'name': category.name,
-        'description': category.description,
-        'iconName': category.iconName,
-      };
-      final r = await _dio.put('/categories/${category.id}', data: body);
-      return ProductCategory.fromJson(Map<String, dynamic>.from(r.data as Map));
+      final r = await _dio.patch('$_path/${category.id}', data: _body(category));
+      return ProductCategory.fromJson(
+        pbRecordToApp(Map<String, dynamic>.from(r.data as Map)),
+      );
     });
   }
 
   @override
-  Future<void> softDelete(int id) async {
+  Future<void> softDelete(String id) async {
     await _auth.ensureLibrarian();
-    await guard(() => _dio.delete('/categories/$id'));
-  }
-
-  @override
-  Future<void> hardDelete(int id) async {
-    await _auth.ensureAdmin();
     await guard(
-      () => _dio.delete('/categories/$id', queryParameters: {'hard': true}),
+      () => _dio.patch(
+        '$_path/$id',
+        data: {
+          'deleted': true,
+          'deletedAt': DateTime.now().toUtc().toIso8601String(),
+        },
+      ),
     );
   }
 
   @override
-  Future<void> restore(int id) async {
+  Future<void> hardDelete(String id) async {
     await _auth.ensureAdmin();
-    await guard(() => _dio.post('/categories/$id/restore'));
+    await guard(() => _dio.delete('$_path/$id'));
   }
 
   @override
-  Future<int> deleteMany(List<int> ids) async {
-    await _auth.ensureLibrarian();
-    return guard(() async {
-      final r = await _dio.post('/categories/bulk-delete', data: {'ids': ids});
-      return (r.data as Map)['deleted'] as int? ?? 0;
-    });
+  Future<void> restore(String id) async {
+    await _auth.ensureAdmin();
+    await guard(
+      () => _dio.patch(
+        '$_path/$id',
+        data: {'deleted': false, 'deletedAt': null},
+      ),
+    );
   }
 
   @override
-  Future<int> restoreMany(List<int> ids) async {
+  Future<int> deleteMany(List<String> ids) async {
+    var n = 0;
+    for (final id in ids) {
+      await softDelete(id);
+      n++;
+    }
+    return n;
+  }
+
+  @override
+  Future<int> restoreMany(List<String> ids) async {
     var n = 0;
     for (final id in ids) {
       await restore(id);

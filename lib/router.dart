@@ -59,9 +59,9 @@ GoRouter createRouter(AuthNotifier auth) {
               return ProductListScreen(
                 initialQuery: ProductQuery(
                   search: q['search'] ?? '',
-                  categoryId: int.tryParse(q['categoryId'] ?? ''),
-                  brandId: int.tryParse(q['brandId'] ?? ''),
-                  supplierId: int.tryParse(q['supplierId'] ?? ''),
+                  categoryId: q['categoryId'],
+                  brandId: q['brandId'],
+                  supplierId: q['supplierId'],
                   priceFrom: double.tryParse(q['priceFrom'] ?? ''),
                   priceTo: double.tryParse(q['priceTo'] ?? ''),
                   sortField: q['sort'] ?? 'name',
@@ -81,7 +81,7 @@ GoRouter createRouter(AuthNotifier auth) {
                 path: ':id/edit',
                 builder:
                     (c, s) => ProductFormScreen(
-                      id: int.tryParse(s.pathParameters['id'] ?? ''),
+                      id: s.pathParameters['id'],
                     ),
               ),
             ],
@@ -137,7 +137,7 @@ GoRouter createRouter(AuthNotifier auth) {
                       loadLibrary: suppliers.loadLibrary,
                       builder:
                           (_) => suppliers.SupplierFormScreen(
-                            id: int.tryParse(s.pathParameters['id'] ?? ''),
+                            id: s.pathParameters['id'],
                           ),
                     ),
               ),
@@ -176,7 +176,7 @@ GoRouter createRouter(AuthNotifier auth) {
                       loadLibrary: brands.loadLibrary,
                       builder:
                           (_) => brands.BrandFormScreen(
-                            id: int.tryParse(s.pathParameters['id'] ?? ''),
+                            id: s.pathParameters['id'],
                           ),
                     ),
               ),
@@ -214,7 +214,7 @@ GoRouter createRouter(AuthNotifier auth) {
                       loadLibrary: categories.loadLibrary,
                       builder:
                           (_) => categories.CategoryFormScreen(
-                            id: int.tryParse(s.pathParameters['id'] ?? ''),
+                            id: s.pathParameters['id'],
                           ),
                     ),
               ),
@@ -255,7 +255,7 @@ GoRouter createRouter(AuthNotifier auth) {
                       loadLibrary: customers.loadLibrary,
                       builder:
                           (_) => customers.CustomerFormScreen(
-                            id: int.tryParse(s.pathParameters['id'] ?? ''),
+                            id: s.pathParameters['id'],
                           ),
                     ),
               ),

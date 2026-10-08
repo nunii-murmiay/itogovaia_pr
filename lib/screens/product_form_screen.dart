@@ -14,7 +14,7 @@ import '../widgets/chip_multi_select.dart';
 import '../widgets/entity_form_shell.dart';
 
 class ProductFormScreen extends StatefulWidget {
-  final int? id;
+  final String? id;
   const ProductFormScreen({super.key, this.id});
   bool get isEditing => id != null;
 
@@ -30,9 +30,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   final _stockCtrl = TextEditingController();
   final _ratingCtrl = TextEditingController();
 
-  int? _supplierId;
-  List<int> _categoryIds = [];
-  List<int> _brandIds = [];
+  String? _supplierId;
+  List<String> _categoryIds = [];
+  List<String> _brandIds = [];
   bool _loading = true;
   bool _dirty = false;
   bool _saving = false;
@@ -106,7 +106,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     setState(() => _saving = true);
     final repo = context.read<ProductRepository>();
     final product = Product(
-      id: _existing?.id ?? 0,
+      id: _existing?.id ?? '',
       name: _nameCtrl.text.trim(),
       sku: _skuCtrl.text.trim().toUpperCase(),
       supplierId: _supplierId!,
@@ -218,7 +218,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
           validator: (v) => _fieldError('sku', AppValidators.sku(v)),
         ),
         const SizedBox(height: 16),
-        DropdownButtonFormField<int>(
+        DropdownButtonFormField<String>(
           value: _supplierId,
           isExpanded: true,
           decoration: const InputDecoration(

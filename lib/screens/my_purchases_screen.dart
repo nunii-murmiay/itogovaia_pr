@@ -1,10 +1,10 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../core/api_client.dart';
 import '../core/api_exceptions.dart';
 import '../models/customer.dart';
+import '../repositories/api_customer_repository.dart';
+import '../repositories/customer_repository.dart';
 import '../state/auth_notifier.dart';
 
 class MyPurchasesScreen extends StatefulWidget {
@@ -32,35 +32,25 @@ class _MyPurchasesScreenState extends State<MyPurchasesScreen> {
       _error = null;
     });
     try {
-      final dio = context.read<Dio>();
       final user = context.read<AuthNotifier>().user;
+      final customerRepo = context.read<CustomerRepository>();
+      final salesRepo = context.read<ApiSalesRepository>();
       Customer? customer;
       if (user?.customerId != null) {
-        final cData = await guard(() async {
-          final r = await dio.get('/customers/${user!.customerId}');
-          return Map<String, dynamic>.from(r.data as Map);
-        });
-        customer = Customer.fromJson(cData);
+        customer = await customerRepo.findById(
+          user!.customerId!,
+        );
       }
 
-      final data = await guard(() async {
-        final r = await dio.get('/sales', queryParameters: {'size': 50});
-        return r.data as Map<String, dynamic>;
-      });
-      var items =
-          (data['items'] as List? ?? const [])
-              .whereType<Map>()
-              .map((e) => Map<String, dynamic>.from(e))
-              .toList();
+      var items = await salesRepo.listSales();
       final cid = user?.customerId;
       items =
           cid == null
               ? []
               : items.where((s) {
-                final top = (s['customerId'] as num?)?.toInt();
-                final nested = (s['customer'] as Map?)?['id'];
-                final nestedId = nested is num ? nested.toInt() : null;
-                return top == cid || nestedId == cid;
+                final top = s['customerId']?.toString();
+                final nested = (s['customer'] as Map?)?['id']?.toString();
+                return top == cid || nested == cid;
               }).toList();
       if (!mounted) return;
       setState(() {
@@ -166,13 +156,14 @@ class _MyPurchasesScreenState extends State<MyPurchasesScreen> {
                           leading: const Icon(Icons.receipt_long),
                           title: Text(name, overflow: TextOverflow.ellipsis),
                           subtitle: Text(
-                            'Кол-во: ${s['quantity']} · '
-                            '${s['totalPrice']} ₽',
+                            'Кол-во: ${s['quantity'] ?? '—'} · '
+                            '${s['total'] ?? s['totalPrice'] ?? '—'} ₽'
+                            '${s['pointsEarned'] != null ? ' · +${s['pointsEarned']} баллов' : ''}',
                             overflow: TextOverflow.ellipsis,
                           ),
                           trailing: TextButton(
                             onPressed: () => _extendLoyaltyNote(s),
-                            child: const Text('В лояльность'),
+                            child: const Text('Баллы'),
                           ),
                         ),
                       );

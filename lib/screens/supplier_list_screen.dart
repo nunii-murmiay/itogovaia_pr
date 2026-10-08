@@ -66,7 +66,7 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
     );
   }
 
-  Future<void> _tryDelete(int id, String name) async {
+  Future<void> _tryDelete(String id, String name) async {
     try {
       final count = await context.read<ProductRepository>().countBySupplier(id);
       if (!mounted) return;

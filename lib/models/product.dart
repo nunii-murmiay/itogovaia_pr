@@ -1,10 +1,12 @@
+import '../core/pb_ids.dart';
+
 class Product {
-  final int id;
+  final String id;
   final String name;
   final String sku;
-  final int supplierId;
-  final List<int> categoryIds;
-  final List<int> brandIds;
+  final String supplierId;
+  final List<String> categoryIds;
+  final List<String> brandIds;
   final double price;
   final int stock;
   final double rating;
@@ -32,12 +34,12 @@ class Product {
   bool get isDeleted => deletedAt != null;
 
   Product copyWith({
-    int? id,
+    String? id,
     String? name,
     String? sku,
-    int? supplierId,
-    List<int>? categoryIds,
-    List<int>? brandIds,
+    String? supplierId,
+    List<String>? categoryIds,
+    List<String>? brandIds,
     double? price,
     int? stock,
     double? rating,
@@ -84,46 +86,27 @@ class Product {
 
   factory Product.fromJson(Map<String, dynamic> json) {
     final supplier = json['supplier'];
-    final supplierId =
-        (json['supplierId'] as num?)?.toInt() ??
-        (supplier is Map ? (supplier['id'] as num?)?.toInt() : null) ??
-        0;
+    var supplierId = pbId(json['supplierId']);
+    if (supplierId.isEmpty) supplierId = pbId(supplier);
 
     final brands = json['brands'];
     final categories = json['categories'];
 
     return Product(
-      id: (json['id'] as num?)?.toInt() ?? 0,
+      id: pbId(json['id']),
       name: json['name'] as String? ?? '',
       sku: json['sku'] as String? ?? '',
       supplierId: supplierId,
-      categoryIds: _ids(json['categoryIds'] ?? categories),
-      brandIds: _ids(json['brandIds'] ?? brands),
+      categoryIds: pbIdList(json['categoryIds'] ?? categories),
+      brandIds: pbIdList(json['brandIds'] ?? brands),
       price: (json['price'] as num?)?.toDouble() ?? 0,
       stock: (json['stock'] as num?)?.toInt() ?? 0,
       rating: (json['rating'] as num?)?.toDouble() ?? 0,
-      deletedAt:
-          json['deletedAt'] == null
-              ? null
-              : DateTime.tryParse(json['deletedAt'].toString()),
+      deletedAt: pbDate(json['deletedAt']),
       supplierName: supplier is Map ? supplier['name'] as String? : null,
       brandNames: _names(brands),
       categoryNames: _names(categories),
     );
-  }
-
-  static List<int> _ids(dynamic value) {
-    if (value is List) {
-      return value
-          .map((e) {
-            if (e is Map) return (e['id'] as num?)?.toInt() ?? 0;
-            return (e as num).toInt();
-          })
-          .where((id) => id > 0)
-          .toList();
-    }
-    if (value is num) return [value.toInt()];
-    return const [];
   }
 
   static List<String> _names(dynamic value) {

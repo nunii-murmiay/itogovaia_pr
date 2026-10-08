@@ -23,7 +23,10 @@ class PersistentProductRepository implements ProductRepository {
       onMigrated: onStorageNotice,
     );
     _items = _store.restore();
-    _nextId = _items.fold<int>(0, (m, e) => e.id > m ? e.id : m) + 1;
+    _nextId = _items.fold<int>(0, (m, e) {
+      final n = int.tryParse(e.id) ?? 0;
+      return n > m ? n : m;
+    }) + 1;
   }
 
   Future<void> _save() => _store.persist(_items);
@@ -84,7 +87,7 @@ class PersistentProductRepository implements ProductRepository {
   }
 
   @override
-  Future<Product?> findById(int id) async {
+  Future<Product?> findById(String id) async {
     final i = _items.indexWhere((p) => p.id == id);
     return i == -1 ? null : _items[i];
   }
@@ -97,7 +100,7 @@ class PersistentProductRepository implements ProductRepository {
   @override
   Future<Product> create(Product product) async {
     final created = product.copyWith(
-      id: _nextId++,
+      id: '${_nextId++}',
       sku:
           product.sku.isEmpty
               ? 'PET-${1000 + _nextId}'
@@ -118,7 +121,7 @@ class PersistentProductRepository implements ProductRepository {
   }
 
   @override
-  Future<void> softDelete(int id) async {
+  Future<void> softDelete(String id) async {
     final i = _items.indexWhere((p) => p.id == id);
     if (i == -1) throw StateError('Товар $id не найден');
     _items[i] = _items[i].copyWith(deletedAt: DateTime.now());
@@ -126,13 +129,13 @@ class PersistentProductRepository implements ProductRepository {
   }
 
   @override
-  Future<void> hardDelete(int id) async {
+  Future<void> hardDelete(String id) async {
     _items.removeWhere((p) => p.id == id);
     await _save();
   }
 
   @override
-  Future<void> restore(int id) async {
+  Future<void> restore(String id) async {
     final i = _items.indexWhere((p) => p.id == id);
     if (i == -1) throw StateError('Товар $id не найден');
     _items[i] = _items[i].copyWith(clearDeletedAt: true);
@@ -140,7 +143,7 @@ class PersistentProductRepository implements ProductRepository {
   }
 
   @override
-  Future<int> deleteMany(List<int> ids) async {
+  Future<int> deleteMany(List<String> ids) async {
     var count = 0;
     for (final id in ids) {
       final i = _items.indexWhere((p) => p.id == id && !p.isDeleted);
@@ -154,7 +157,7 @@ class PersistentProductRepository implements ProductRepository {
   }
 
   @override
-  Future<int> restoreMany(List<int> ids) async {
+  Future<int> restoreMany(List<String> ids) async {
     var count = 0;
     for (final id in ids) {
       final i = _items.indexWhere((p) => p.id == id && p.isDeleted);
@@ -168,7 +171,7 @@ class PersistentProductRepository implements ProductRepository {
   }
 
   @override
-  Future<bool> isSkuTaken(String sku, {int? excludeId}) async {
+  Future<bool> isSkuTaken(String sku, {String? excludeId}) async {
     final needle = sku.trim().toUpperCase();
     return _items.any(
       (p) =>
@@ -180,7 +183,7 @@ class PersistentProductRepository implements ProductRepository {
 
   @override
   Future<int> countBySupplier(
-    int supplierId, {
+    String supplierId, {
     bool includeDeleted = false,
   }) async {
     return _items
@@ -191,7 +194,7 @@ class PersistentProductRepository implements ProductRepository {
   }
 
   @override
-  Future<int> countByBrand(int brandId, {bool includeDeleted = false}) async {
+  Future<int> countByBrand(String brandId, {bool includeDeleted = false}) async {
     return _items
         .where(
           (p) =>
@@ -202,7 +205,7 @@ class PersistentProductRepository implements ProductRepository {
 
   @override
   Future<int> countByCategory(
-    int categoryId, {
+    String categoryId, {
     bool includeDeleted = false,
   }) async {
     return _items

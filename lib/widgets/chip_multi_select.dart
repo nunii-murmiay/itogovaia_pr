@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 /// Множественный выбор через FilterChip внутри FormField.
 class ChipMultiSelectFormField extends StatelessWidget {
   final String label;
-  final List<int> value;
-  final List<({int id, String name})> options;
-  final ValueChanged<List<int>> onChanged;
-  final String? Function(List<int>?)? validator;
+  final List<String> value;
+  final List<({String id, String name})> options;
+  final ValueChanged<List<String>> onChanged;
+  final String? Function(List<String>?)? validator;
   final String emptyHint;
 
   const ChipMultiSelectFormField({
@@ -21,7 +21,7 @@ class ChipMultiSelectFormField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FormField<List<int>>(
+    return FormField<List<String>>(
       initialValue: value,
       validator: validator,
       builder: (field) {
@@ -58,7 +58,7 @@ class ChipMultiSelectFormField extends StatelessWidget {
                             label: Text(o.name),
                             selected: selected,
                             onSelected: (_) {
-                              final next = [...(field.value ?? const <int>[])];
+                              final next = [...(field.value ?? const <String>[])];
                               selected ? next.remove(o.id) : next.add(o.id);
                               field.didChange(next);
                               onChanged(next);
@@ -71,7 +71,7 @@ class ChipMultiSelectFormField extends StatelessWidget {
     );
   }
 
-  bool _same(List<int>? a, List<int> b) {
+  bool _same(List<String>? a, List<String> b) {
     if (a == null) return false;
     if (a.length != b.length) return false;
     for (final x in a) {

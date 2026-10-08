@@ -26,7 +26,10 @@ class PersistentCategoryRepository implements CategoryRepository {
       onMigrated: onStorageNotice,
     );
     _items = _store.restore();
-    _nextId = _items.fold<int>(0, (m, e) => e.id > m ? e.id : m) + 1;
+    _nextId = _items.fold<int>(0, (m, e) {
+      final n = int.tryParse(e.id) ?? 0;
+      return n > m ? n : m;
+    }) + 1;
   }
 
   Future<void> _save() => _store.persist(_items);
@@ -62,7 +65,7 @@ class PersistentCategoryRepository implements CategoryRepository {
   }
 
   @override
-  Future<ProductCategory?> findById(int id) async {
+  Future<ProductCategory?> findById(String id) async {
     final i = _items.indexWhere((c) => c.id == id);
     return i == -1 ? null : _items[i];
   }
@@ -74,7 +77,7 @@ class PersistentCategoryRepository implements CategoryRepository {
 
   @override
   Future<ProductCategory> create(ProductCategory category) async {
-    final created = category.copyWith(id: _nextId++);
+    final created = category.copyWith(id: '${_nextId++}');
     _items.add(created);
     await _save();
     return created;
@@ -90,7 +93,7 @@ class PersistentCategoryRepository implements CategoryRepository {
   }
 
   @override
-  Future<void> softDelete(int id) async {
+  Future<void> softDelete(String id) async {
     final i = _items.indexWhere((c) => c.id == id);
     if (i == -1) throw StateError('Категория $id не найдена');
     _items[i] = _items[i].copyWith(deletedAt: DateTime.now());
@@ -98,13 +101,13 @@ class PersistentCategoryRepository implements CategoryRepository {
   }
 
   @override
-  Future<void> hardDelete(int id) async {
+  Future<void> hardDelete(String id) async {
     _items.removeWhere((c) => c.id == id);
     await _save();
   }
 
   @override
-  Future<void> restore(int id) async {
+  Future<void> restore(String id) async {
     final i = _items.indexWhere((c) => c.id == id);
     if (i == -1) throw StateError('Категория $id не найдена');
     _items[i] = _items[i].copyWith(clearDeletedAt: true);
@@ -112,7 +115,7 @@ class PersistentCategoryRepository implements CategoryRepository {
   }
 
   @override
-  Future<int> deleteMany(List<int> ids) async {
+  Future<int> deleteMany(List<String> ids) async {
     var c = 0;
     for (final id in ids) {
       final i = _items.indexWhere((x) => x.id == id && !x.isDeleted);
@@ -126,7 +129,7 @@ class PersistentCategoryRepository implements CategoryRepository {
   }
 
   @override
-  Future<int> restoreMany(List<int> ids) async {
+  Future<int> restoreMany(List<String> ids) async {
     var c = 0;
     for (final id in ids) {
       final i = _items.indexWhere((x) => x.id == id && x.isDeleted);

@@ -5,7 +5,7 @@ import 'adaptive_entity.dart';
 class SupplierCard extends StatelessWidget {
   final Supplier supplier;
   final bool isSelected;
-  final ValueChanged<int>? onToggleSelect;
+  final ValueChanged<String>? onToggleSelect;
   final VoidCallback? onView;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;

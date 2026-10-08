@@ -1,6 +1,8 @@
+import '../core/pb_ids.dart';
+
 /// Поставщик (аналог Publisher — связь один ко многим с товарами).
 class Supplier {
-  final int id;
+  final String id;
   final String name;
   final String country;
   final String contactPerson;
@@ -23,7 +25,7 @@ class Supplier {
   bool get isDeleted => deletedAt != null;
 
   Supplier copyWith({
-    int? id,
+    String? id,
     String? name,
     String? country,
     String? contactPerson,
@@ -57,16 +59,13 @@ class Supplier {
   };
 
   factory Supplier.fromJson(Map<String, dynamic> json) => Supplier(
-    id: (json['id'] as num?)?.toInt() ?? 0,
+    id: pbId(json['id']),
     name: json['name'] as String? ?? '',
     country: json['country'] as String? ?? '',
     contactPerson: json['contactPerson'] as String? ?? '',
     phone: json['phone'] as String? ?? '',
     email: json['email'] as String? ?? '',
     rating: (json['rating'] as num?)?.toDouble() ?? 0,
-    deletedAt:
-        json['deletedAt'] == null
-            ? null
-            : DateTime.tryParse(json['deletedAt'].toString()),
+    deletedAt: pbDate(json['deletedAt']),
   );
 }

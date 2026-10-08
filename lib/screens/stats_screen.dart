@@ -38,17 +38,17 @@ class _StatsScreenState extends State<StatsScreen> {
       final dio = context.read<Dio>();
       Future<int> total(String path) async {
         final data = await guard(() async {
-          final r = await dio.get(path, queryParameters: {'size': 1});
+          final r = await dio.get(path);
           return r.data as Map<String, dynamic>;
         });
-        return (data['total'] as num?)?.toInt() ?? 0;
+        return (data['totalItems'] as num?)?.toInt() ?? 0;
       }
 
-      final p = await total('/products');
-      final c = await total('/customers');
-      final s = await total('/sales');
-      final sup = await total('/suppliers');
-      final u = await total('/users');
+      final p = await total('/collections/products/records?perPage=1');
+      final c = await total('/collections/customers/records?perPage=1');
+      final s = await total('/collections/sales/records?perPage=1');
+      final sup = await total('/collections/suppliers/records?perPage=1');
+      final u = await total('/collections/users/records?perPage=1');
 
       if (!mounted) return;
       setState(() {

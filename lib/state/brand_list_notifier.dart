@@ -13,20 +13,20 @@ class BrandListNotifier extends EntityListNotifier<Brand, BrandQuery> {
   Future<PageResult<Brand>> fetch(BrandQuery query) => _repository.find(query);
 
   @override
-  int idOf(Brand item) => item.id;
+  String idOf(Brand item) => item.id;
 
   @override
-  Future<void> doSoftDelete(int id) => _repository.softDelete(id);
+  Future<void> doSoftDelete(String id) => _repository.softDelete(id);
 
   @override
-  Future<void> doHardDelete(int id) => _repository.hardDelete(id);
+  Future<void> doHardDelete(String id) => _repository.hardDelete(id);
 
   @override
-  Future<void> doRestore(int id) => _repository.restore(id);
+  Future<void> doRestore(String id) => _repository.restore(id);
 
   @override
-  Future<void> doDeleteMany(List<int> ids) => _repository.deleteMany(ids);
+  Future<void> doDeleteMany(List<String> ids) => _repository.deleteMany(ids);
 
   @override
-  Future<void> doRestoreMany(List<int> ids) => _repository.restoreMany(ids);
+  Future<void> doRestoreMany(List<String> ids) => _repository.restoreMany(ids);
 }

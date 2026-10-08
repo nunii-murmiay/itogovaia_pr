@@ -8,7 +8,7 @@ abstract class EntityListNotifier<T, Q> extends ChangeNotifier {
   PageResult<T> _result = PageResult.empty();
   LoadStatus _status = LoadStatus.idle;
   String? _error;
-  final Set<int> _selected = {};
+  final Set<String> _selected = {};
   late Q _query;
 
   EntityListNotifier(Q initialQuery) {
@@ -19,16 +19,16 @@ abstract class EntityListNotifier<T, Q> extends ChangeNotifier {
   PageResult<T> get result => _result;
   LoadStatus get status => _status;
   String? get error => _error;
-  Set<int> get selected => Set.unmodifiable(_selected);
+  Set<String> get selected => Set.unmodifiable(_selected);
   bool get hasSelection => _selected.isNotEmpty;
 
   Future<PageResult<T>> fetch(Q query);
-  int idOf(T item);
-  Future<void> doSoftDelete(int id);
-  Future<void> doHardDelete(int id);
-  Future<void> doRestore(int id);
-  Future<void> doDeleteMany(List<int> ids);
-  Future<void> doRestoreMany(List<int> ids);
+  String idOf(T item);
+  Future<void> doSoftDelete(String id);
+  Future<void> doHardDelete(String id);
+  Future<void> doRestore(String id);
+  Future<void> doDeleteMany(List<String> ids);
+  Future<void> doRestoreMany(List<String> ids);
 
   Future<void> load() async {
     _status = LoadStatus.loading;
@@ -58,7 +58,7 @@ abstract class EntityListNotifier<T, Q> extends ChangeNotifier {
     await load();
   }
 
-  void toggleSelection(int id) {
+  void toggleSelection(String id) {
     if (_selected.contains(id)) {
       _selected.remove(id);
     } else {
@@ -67,7 +67,7 @@ abstract class EntityListNotifier<T, Q> extends ChangeNotifier {
     notifyListeners();
   }
 
-  void toggleSelectAll(List<int> visibleIds) {
+  void toggleSelectAll(List<String> visibleIds) {
     final allSelected = visibleIds.every(_selected.contains);
     if (allSelected) {
       for (final id in visibleIds) {
@@ -84,19 +84,19 @@ abstract class EntityListNotifier<T, Q> extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> softDelete(int id) async {
+  Future<void> softDelete(String id) async {
     await doSoftDelete(id);
     _selected.remove(id);
     await load();
   }
 
-  Future<void> hardDelete(int id) async {
+  Future<void> hardDelete(String id) async {
     await doHardDelete(id);
     _selected.remove(id);
     await load();
   }
 
-  Future<void> restore(int id) async {
+  Future<void> restore(String id) async {
     await doRestore(id);
     await load();
   }

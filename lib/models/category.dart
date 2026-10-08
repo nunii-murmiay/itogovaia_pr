@@ -1,6 +1,8 @@
+import '../core/pb_ids.dart';
+
 /// Категория товара (аналог Genre).
 class ProductCategory {
-  final int id;
+  final String id;
   final String name;
   final String description;
   final String iconName;
@@ -17,7 +19,7 @@ class ProductCategory {
   bool get isDeleted => deletedAt != null;
 
   ProductCategory copyWith({
-    int? id,
+    String? id,
     String? name,
     String? description,
     String? iconName,
@@ -43,13 +45,10 @@ class ProductCategory {
 
   factory ProductCategory.fromJson(Map<String, dynamic> json) =>
       ProductCategory(
-        id: (json['id'] as num?)?.toInt() ?? 0,
+        id: pbId(json['id']),
         name: json['name'] as String? ?? '',
         description: json['description'] as String? ?? '',
         iconName: json['iconName'] as String? ?? 'category',
-        deletedAt:
-            json['deletedAt'] == null
-                ? null
-                : DateTime.tryParse(json['deletedAt'].toString()),
+        deletedAt: pbDate(json['deletedAt']),
       );
 }

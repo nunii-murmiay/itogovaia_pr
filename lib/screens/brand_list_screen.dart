@@ -61,7 +61,7 @@ class _BrandListScreenState extends State<BrandListScreen> {
     );
   }
 
-  Future<void> _tryDelete(int id, String name) async {
+  Future<void> _tryDelete(String id, String name) async {
     final count = await context.read<ProductRepository>().countByBrand(id);
     if (!mounted) return;
     if (count > 0) {

@@ -26,7 +26,10 @@ class PersistentSupplierRepository implements SupplierRepository {
       onMigrated: onStorageNotice,
     );
     _items = _store.restore();
-    _nextId = _items.fold<int>(0, (m, e) => e.id > m ? e.id : m) + 1;
+    _nextId = _items.fold<int>(0, (m, e) {
+      final n = int.tryParse(e.id) ?? 0;
+      return n > m ? n : m;
+    }) + 1;
   }
 
   Future<void> _save() => _store.persist(_items);
@@ -77,7 +80,7 @@ class PersistentSupplierRepository implements SupplierRepository {
   }
 
   @override
-  Future<Supplier?> findById(int id) async {
+  Future<Supplier?> findById(String id) async {
     final i = _items.indexWhere((s) => s.id == id);
     return i == -1 ? null : _items[i];
   }
@@ -89,7 +92,7 @@ class PersistentSupplierRepository implements SupplierRepository {
 
   @override
   Future<Supplier> create(Supplier supplier) async {
-    final created = supplier.copyWith(id: _nextId++);
+    final created = supplier.copyWith(id: '${_nextId++}');
     _items.add(created);
     await _save();
     return created;
@@ -105,7 +108,7 @@ class PersistentSupplierRepository implements SupplierRepository {
   }
 
   @override
-  Future<void> softDelete(int id) async {
+  Future<void> softDelete(String id) async {
     final i = _items.indexWhere((s) => s.id == id);
     if (i == -1) throw StateError('Поставщик $id не найден');
     _items[i] = _items[i].copyWith(deletedAt: DateTime.now());
@@ -113,13 +116,13 @@ class PersistentSupplierRepository implements SupplierRepository {
   }
 
   @override
-  Future<void> hardDelete(int id) async {
+  Future<void> hardDelete(String id) async {
     _items.removeWhere((s) => s.id == id);
     await _save();
   }
 
   @override
-  Future<void> restore(int id) async {
+  Future<void> restore(String id) async {
     final i = _items.indexWhere((s) => s.id == id);
     if (i == -1) throw StateError('Поставщик $id не найден');
     _items[i] = _items[i].copyWith(clearDeletedAt: true);
@@ -127,7 +130,7 @@ class PersistentSupplierRepository implements SupplierRepository {
   }
 
   @override
-  Future<int> deleteMany(List<int> ids) async {
+  Future<int> deleteMany(List<String> ids) async {
     var c = 0;
     for (final id in ids) {
       final i = _items.indexWhere((s) => s.id == id && !s.isDeleted);
@@ -141,7 +144,7 @@ class PersistentSupplierRepository implements SupplierRepository {
   }
 
   @override
-  Future<int> restoreMany(List<int> ids) async {
+  Future<int> restoreMany(List<String> ids) async {
     var c = 0;
     for (final id in ids) {
       final i = _items.indexWhere((s) => s.id == id && s.isDeleted);

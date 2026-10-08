@@ -231,8 +231,9 @@ class AuthNotifier extends ChangeNotifier {
 
   bool _isJwtExpired(String token) {
     try {
-      // Учебный токен: полезная часть стоит первой, подпись — второй.
-      final body = token.split('.').first;
+      // PocketBase — обычный JWT (payload во 2-й части). Старый mock — payload в 1-й.
+      final parts = token.split('.');
+      final body = parts.length >= 3 ? parts[1] : parts.first;
       final normalized = base64Url.normalize(body);
       final map = jsonDecode(utf8.decode(base64Url.decode(normalized))) as Map;
       final exp = map['exp'];

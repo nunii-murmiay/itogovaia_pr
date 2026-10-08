@@ -10,7 +10,7 @@ import '../validation/validators.dart';
 import '../widgets/entity_form_shell.dart';
 
 class CategoryFormScreen extends StatefulWidget {
-  final int? id;
+  final String? id;
   const CategoryFormScreen({super.key, this.id});
   bool get isEditing => id != null;
 
@@ -73,7 +73,7 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
     setState(() => _saving = true);
     final repo = context.read<CategoryRepository>();
     final item = ProductCategory(
-      id: _existing?.id ?? 0,
+      id: _existing?.id ?? '',
       name: _nameCtrl.text.trim(),
       description: _descCtrl.text.trim(),
       iconName: _iconName,

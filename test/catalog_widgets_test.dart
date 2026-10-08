@@ -163,23 +163,23 @@ class _FakeProducts implements ProductRepository {
   Future<Product> create(Product product) => throw UnimplementedError();
 
   @override
-  Future<int> countByBrand(int brandId, {bool includeDeleted = false}) async =>
+  Future<int> countByBrand(String brandId, {bool includeDeleted = false}) async =>
       0;
 
   @override
   Future<int> countByCategory(
-    int categoryId, {
+    String categoryId, {
     bool includeDeleted = false,
   }) async => 0;
 
   @override
   Future<int> countBySupplier(
-    int supplierId, {
+    String supplierId, {
     bool includeDeleted = false,
   }) async => 0;
 
   @override
-  Future<int> deleteMany(List<int> ids) async => 0;
+  Future<int> deleteMany(List<String> ids) async => 0;
 
   @override
   Future<PageResult<Product>> find(ProductQuery query) async =>
@@ -189,22 +189,22 @@ class _FakeProducts implements ProductRepository {
   Future<List<Product>> findAll({bool includeDeleted = false}) async => [];
 
   @override
-  Future<Product?> findById(int id) async => null;
+  Future<Product?> findById(String id) async => null;
 
   @override
-  Future<void> hardDelete(int id) async {}
+  Future<void> hardDelete(String id) async {}
 
   @override
-  Future<bool> isSkuTaken(String sku, {int? excludeId}) async => false;
+  Future<bool> isSkuTaken(String sku, {String? excludeId}) async => false;
 
   @override
-  Future<void> restore(int id) async {}
+  Future<void> restore(String id) async {}
 
   @override
-  Future<int> restoreMany(List<int> ids) async => 0;
+  Future<int> restoreMany(List<String> ids) async => 0;
 
   @override
-  Future<void> softDelete(int id) async {}
+  Future<void> softDelete(String id) async {}
 
   @override
   Future<Product> update(Product product) => throw UnimplementedError();
@@ -215,7 +215,7 @@ class _FakeBrands implements BrandRepository {
   Future<Brand> create(Brand brand) => throw UnimplementedError();
 
   @override
-  Future<int> deleteMany(List<int> ids) async => 0;
+  Future<int> deleteMany(List<String> ids) async => 0;
 
   @override
   Future<PageResult<Brand>> find(BrandQuery query) async => PageResult.empty();
@@ -224,19 +224,19 @@ class _FakeBrands implements BrandRepository {
   Future<List<Brand>> findAll({bool includeDeleted = false}) async => [];
 
   @override
-  Future<Brand?> findById(int id) async => null;
+  Future<Brand?> findById(String id) async => null;
 
   @override
-  Future<void> hardDelete(int id) async {}
+  Future<void> hardDelete(String id) async {}
 
   @override
-  Future<void> restore(int id) async {}
+  Future<void> restore(String id) async {}
 
   @override
-  Future<int> restoreMany(List<int> ids) async => 0;
+  Future<int> restoreMany(List<String> ids) async => 0;
 
   @override
-  Future<void> softDelete(int id) async {}
+  Future<void> softDelete(String id) async {}
 
   @override
   Future<Brand> update(Brand brand) => throw UnimplementedError();
@@ -248,7 +248,7 @@ class _FakeCategories implements CategoryRepository {
       throw UnimplementedError();
 
   @override
-  Future<int> deleteMany(List<int> ids) async => 0;
+  Future<int> deleteMany(List<String> ids) async => 0;
 
   @override
   Future<PageResult<ProductCategory>> find(CategoryQuery query) async =>
@@ -259,19 +259,19 @@ class _FakeCategories implements CategoryRepository {
       [];
 
   @override
-  Future<ProductCategory?> findById(int id) async => null;
+  Future<ProductCategory?> findById(String id) async => null;
 
   @override
-  Future<void> hardDelete(int id) async {}
+  Future<void> hardDelete(String id) async {}
 
   @override
-  Future<void> restore(int id) async {}
+  Future<void> restore(String id) async {}
 
   @override
-  Future<int> restoreMany(List<int> ids) async => 0;
+  Future<int> restoreMany(List<String> ids) async => 0;
 
   @override
-  Future<void> softDelete(int id) async {}
+  Future<void> softDelete(String id) async {}
 
   @override
   Future<ProductCategory> update(ProductCategory category) =>
@@ -283,7 +283,7 @@ class _FakeSuppliers implements SupplierRepository {
   Future<Supplier> create(Supplier supplier) => throw UnimplementedError();
 
   @override
-  Future<int> deleteMany(List<int> ids) async => 0;
+  Future<int> deleteMany(List<String> ids) async => 0;
 
   @override
   Future<PageResult<Supplier>> find(SupplierQuery query) async =>
@@ -293,19 +293,19 @@ class _FakeSuppliers implements SupplierRepository {
   Future<List<Supplier>> findAll({bool includeDeleted = false}) async => [];
 
   @override
-  Future<Supplier?> findById(int id) async => null;
+  Future<Supplier?> findById(String id) async => null;
 
   @override
-  Future<void> hardDelete(int id) async {}
+  Future<void> hardDelete(String id) async {}
 
   @override
-  Future<void> restore(int id) async {}
+  Future<void> restore(String id) async {}
 
   @override
-  Future<int> restoreMany(List<int> ids) async => 0;
+  Future<int> restoreMany(List<String> ids) async => 0;
 
   @override
-  Future<void> softDelete(int id) async {}
+  Future<void> softDelete(String id) async {}
 
   @override
   Future<Supplier> update(Supplier supplier) => throw UnimplementedError();

@@ -117,12 +117,12 @@ class AppValidators {
     return null;
   }
 
-  static String? requiredId(int? value, {String field = 'Значение'}) {
-    if (value == null || value <= 0) return 'Выберите $field';
+  static String? requiredId(String? value, {String field = 'Значение'}) {
+    if (value == null || value.trim().isEmpty) return 'Выберите $field';
     return null;
   }
 
-  static String? nonEmptyIds(List<int>? value, {String field = 'элемент'}) {
+  static String? nonEmptyIds(List<String>? value, {String field = 'элемент'}) {
     if (value == null || value.isEmpty) {
       return 'Выберите хотя бы один $field';
     }

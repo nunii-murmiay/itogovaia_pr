@@ -4,13 +4,13 @@ import '../models/page_result.dart';
 
 abstract interface class CategoryRepository {
   Future<PageResult<ProductCategory>> find(CategoryQuery query);
-  Future<ProductCategory?> findById(int id);
+  Future<ProductCategory?> findById(String id);
   Future<List<ProductCategory>> findAll({bool includeDeleted = false});
   Future<ProductCategory> create(ProductCategory category);
   Future<ProductCategory> update(ProductCategory category);
-  Future<void> softDelete(int id);
-  Future<void> hardDelete(int id);
-  Future<void> restore(int id);
-  Future<int> deleteMany(List<int> ids);
-  Future<int> restoreMany(List<int> ids);
+  Future<void> softDelete(String id);
+  Future<void> hardDelete(String id);
+  Future<void> restore(String id);
+  Future<int> deleteMany(List<String> ids);
+  Future<int> restoreMany(List<String> ids);
 }

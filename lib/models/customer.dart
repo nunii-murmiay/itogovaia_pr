@@ -1,8 +1,10 @@
+import '../core/pb_ids.dart';
+
 import 'loyalty_card.dart';
 
 /// Клиент зоомагазина (аналог Reader) с вложенной картой лояльности.
 class Customer {
-  final int id;
+  final String id;
   final String fullName;
   final String email;
   final String phone;
@@ -21,7 +23,7 @@ class Customer {
   bool get isDeleted => deletedAt != null;
 
   Customer copyWith({
-    int? id,
+    String? id,
     String? fullName,
     String? email,
     String? phone,
@@ -61,15 +63,12 @@ class Customer {
             );
 
     return Customer(
-      id: (json['id'] as num?)?.toInt() ?? 0,
+      id: pbId(json['id']),
       fullName: json['fullName'] as String? ?? '',
       email: json['email'] as String? ?? '',
       phone: json['phone'] as String? ?? '',
       card: card,
-      deletedAt:
-          json['deletedAt'] == null
-              ? null
-              : DateTime.tryParse(json['deletedAt'].toString()),
+      deletedAt: pbDate(json['deletedAt']),
     );
   }
 }

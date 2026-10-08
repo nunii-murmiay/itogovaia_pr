@@ -23,7 +23,10 @@ class PersistentBrandRepository implements BrandRepository {
       onMigrated: onStorageNotice,
     );
     _items = _store.restore();
-    _nextId = _items.fold<int>(0, (m, e) => e.id > m ? e.id : m) + 1;
+    _nextId = _items.fold<int>(0, (m, e) {
+      final n = int.tryParse(e.id) ?? 0;
+      return n > m ? n : m;
+    }) + 1;
   }
 
   Future<void> _save() => _store.persist(_items);
@@ -72,7 +75,7 @@ class PersistentBrandRepository implements BrandRepository {
   }
 
   @override
-  Future<Brand?> findById(int id) async {
+  Future<Brand?> findById(String id) async {
     final i = _items.indexWhere((b) => b.id == id);
     return i == -1 ? null : _items[i];
   }
@@ -84,7 +87,7 @@ class PersistentBrandRepository implements BrandRepository {
 
   @override
   Future<Brand> create(Brand brand) async {
-    final created = brand.copyWith(id: _nextId++);
+    final created = brand.copyWith(id: '${_nextId++}');
     _items.add(created);
     await _save();
     return created;
@@ -100,7 +103,7 @@ class PersistentBrandRepository implements BrandRepository {
   }
 
   @override
-  Future<void> softDelete(int id) async {
+  Future<void> softDelete(String id) async {
     final i = _items.indexWhere((b) => b.id == id);
     if (i == -1) throw StateError('Бренд $id не найден');
     _items[i] = _items[i].copyWith(deletedAt: DateTime.now());
@@ -108,13 +111,13 @@ class PersistentBrandRepository implements BrandRepository {
   }
 
   @override
-  Future<void> hardDelete(int id) async {
+  Future<void> hardDelete(String id) async {
     _items.removeWhere((b) => b.id == id);
     await _save();
   }
 
   @override
-  Future<void> restore(int id) async {
+  Future<void> restore(String id) async {
     final i = _items.indexWhere((b) => b.id == id);
     if (i == -1) throw StateError('Бренд $id не найден');
     _items[i] = _items[i].copyWith(clearDeletedAt: true);
@@ -122,7 +125,7 @@ class PersistentBrandRepository implements BrandRepository {
   }
 
   @override
-  Future<int> deleteMany(List<int> ids) async {
+  Future<int> deleteMany(List<String> ids) async {
     var c = 0;
     for (final id in ids) {
       final i = _items.indexWhere((b) => b.id == id && !b.isDeleted);
@@ -136,7 +139,7 @@ class PersistentBrandRepository implements BrandRepository {
   }
 
   @override
-  Future<int> restoreMany(List<int> ids) async {
+  Future<int> restoreMany(List<String> ids) async {
     var c = 0;
     for (final id in ids) {
       final i = _items.indexWhere((b) => b.id == id && b.isDeleted);

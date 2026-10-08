@@ -1,8 +1,8 @@
 class ProductQuery {
   final String search;
-  final int? categoryId;
-  final int? brandId;
-  final int? supplierId;
+  final String? categoryId;
+  final String? brandId;
+  final String? supplierId;
   final double? priceFrom;
   final double? priceTo;
   final String sortField;
@@ -40,9 +40,11 @@ class ProductQuery {
   }) {
     return ProductQuery(
       search: search ?? this.search,
-      categoryId: categoryId == _unset ? this.categoryId : categoryId as int?,
-      brandId: brandId == _unset ? this.brandId : brandId as int?,
-      supplierId: supplierId == _unset ? this.supplierId : supplierId as int?,
+      categoryId:
+          categoryId == _unset ? this.categoryId : categoryId as String?,
+      brandId: brandId == _unset ? this.brandId : brandId as String?,
+      supplierId:
+          supplierId == _unset ? this.supplierId : supplierId as String?,
       priceFrom: priceFrom == _unset ? this.priceFrom : priceFrom as double?,
       priceTo: priceTo == _unset ? this.priceTo : priceTo as double?,
       sortField: sortField ?? this.sortField,

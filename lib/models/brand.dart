@@ -1,12 +1,14 @@
+import '../core/pb_ids.dart';
+
 /// Бренд зоотоваров (аналог Author в учебной библиотеке).
 class Brand {
-  final int id;
+  final String id;
   final String name;
   final String country;
   final String description;
 
   /// Поставщики, у которых доступен бренд — для каскадного отбора в форме товара.
-  final List<int> supplierIds;
+  final List<String> supplierIds;
   final DateTime? deletedAt;
 
   const Brand({
@@ -21,11 +23,11 @@ class Brand {
   bool get isDeleted => deletedAt != null;
 
   Brand copyWith({
-    int? id,
+    String? id,
     String? name,
     String? country,
     String? description,
-    List<int>? supplierIds,
+    List<String>? supplierIds,
     DateTime? deletedAt,
     bool clearDeletedAt = false,
   }) {
@@ -49,18 +51,11 @@ class Brand {
   };
 
   factory Brand.fromJson(Map<String, dynamic> json) => Brand(
-    id: (json['id'] as num?)?.toInt() ?? 0,
+    id: pbId(json['id']),
     name: json['name'] as String? ?? '',
     country: json['country'] as String? ?? '',
     description: json['description'] as String? ?? '',
-    supplierIds:
-        (json['supplierIds'] as List?)
-            ?.map((e) => (e as num).toInt())
-            .toList() ??
-        const [],
-    deletedAt:
-        json['deletedAt'] == null
-            ? null
-            : DateTime.tryParse(json['deletedAt'].toString()),
+    supplierIds: pbIdList(json['supplierIds']),
+    deletedAt: pbDate(json['deletedAt']),
   );
 }

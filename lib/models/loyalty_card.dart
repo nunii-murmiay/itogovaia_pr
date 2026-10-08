@@ -1,11 +1,15 @@
+import '../core/pb_ids.dart';
+
 /// Карта лояльности клиента (аналог LibraryCard, связь 1:1 с Customer).
 class LoyaltyCard {
+  final String id;
   final String number;
   final DateTime issuedAt;
   final int points;
   final String level;
 
   const LoyaltyCard({
+    this.id = '',
     required this.number,
     required this.issuedAt,
     required this.points,
@@ -13,12 +17,14 @@ class LoyaltyCard {
   });
 
   LoyaltyCard copyWith({
+    String? id,
     String? number,
     DateTime? issuedAt,
     int? points,
     String? level,
   }) {
     return LoyaltyCard(
+      id: id ?? this.id,
       number: number ?? this.number,
       issuedAt: issuedAt ?? this.issuedAt,
       points: points ?? this.points,
@@ -27,6 +33,7 @@ class LoyaltyCard {
   }
 
   Map<String, dynamic> toJson() => {
+    if (id.isNotEmpty) 'id': id,
     'number': number,
     'issuedAt': issuedAt.toIso8601String(),
     'points': points,
@@ -34,6 +41,7 @@ class LoyaltyCard {
   };
 
   factory LoyaltyCard.fromJson(Map<String, dynamic> json) => LoyaltyCard(
+    id: pbId(json['id']),
     number: json['number'] as String? ?? '',
     issuedAt:
         json['issuedAt'] == null

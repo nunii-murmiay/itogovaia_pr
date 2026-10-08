@@ -4,13 +4,13 @@ import '../models/supplier_query.dart';
 
 abstract interface class SupplierRepository {
   Future<PageResult<Supplier>> find(SupplierQuery query);
-  Future<Supplier?> findById(int id);
+  Future<Supplier?> findById(String id);
   Future<List<Supplier>> findAll({bool includeDeleted = false});
   Future<Supplier> create(Supplier supplier);
   Future<Supplier> update(Supplier supplier);
-  Future<void> softDelete(int id);
-  Future<void> hardDelete(int id);
-  Future<void> restore(int id);
-  Future<int> deleteMany(List<int> ids);
-  Future<int> restoreMany(List<int> ids);
+  Future<void> softDelete(String id);
+  Future<void> hardDelete(String id);
+  Future<void> restore(String id);
+  Future<int> deleteMany(List<String> ids);
+  Future<int> restoreMany(List<String> ids);
 }

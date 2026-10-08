@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import '../core/api_exceptions.dart';
 import '../core/breakpoints.dart';
 import '../core/catalog_cache.dart';
 import '../core/permissions.dart';
@@ -11,9 +10,7 @@ import '../models/product.dart';
 import '../models/product_query.dart';
 import '../models/role.dart';
 import '../models/supplier.dart';
-import '../repositories/api_customer_repository.dart';
 import '../state/auth_notifier.dart';
-import '../repositories/customer_repository.dart';
 import '../state/product_list_notifier.dart';
 import '../widgets/access_scope.dart';
 import '../widgets/adaptive_entity.dart';
@@ -89,7 +86,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
     );
   }
 
-  String _supplierName(int id) =>
+  String _supplierName(String id) =>
       _suppliers.where((s) => s.id == id).map((s) => s.name).firstOrNull ?? '—';
 
   String _categoriesLabel(Product p) {
@@ -113,43 +110,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
       supplierName: _supplierName(product.supplierId),
       categoriesLabel: _categoriesLabel(product),
     );
-  }
-
-  /// Демо конфликта 409: продажа при нулевом остатке.
-  Future<void> _trySale(Product product) async {
-    try {
-      final customers = await context.read<CustomerRepository>().findAll();
-      if (!mounted) return;
-      if (customers.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Нет клиентов для оформления продажи')),
-        );
-        return;
-      }
-      await context.read<ApiSalesRepository>().createSale(
-        customerId: customers.first.id,
-        productId: product.id,
-        quantity: 1,
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Продажа «${product.name}» оформлена')),
-      );
-      context.read<ProductListNotifier>().load();
-    } on ConflictException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.message),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.message)));
-    }
   }
 
   @override
@@ -367,17 +327,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
                     ],
                     actions:
                         (p) => [
-                          RoleGate(
-                            operation: AppOperation.createSale,
-                            child: IconButton(
-                              icon: const Icon(
-                                Icons.shopping_cart_outlined,
-                                size: 18,
-                              ),
-                              tooltip: 'Продать 1 шт.',
-                              onPressed: () => _trySale(p),
-                            ),
-                          ),
                           EntityActions(
                             deleted: p.isDeleted,
                             onView: () => _openProduct(p),

@@ -11,7 +11,7 @@ import '../validation/validators.dart';
 import '../widgets/entity_form_shell.dart';
 
 class SupplierFormScreen extends StatefulWidget {
-  final int? id;
+  final String? id;
   const SupplierFormScreen({super.key, this.id});
   bool get isEditing => id != null;
 
@@ -74,7 +74,7 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
     setState(() => _saving = true);
     final repo = context.read<SupplierRepository>();
     final item = Supplier(
-      id: _existing?.id ?? 0,
+      id: _existing?.id ?? '',
       name: _nameCtrl.text.trim(),
       country: _countryCtrl.text.trim(),
       contactPerson: _contactCtrl.text.trim(),

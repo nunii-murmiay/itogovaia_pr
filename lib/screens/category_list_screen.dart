@@ -59,7 +59,7 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
     );
   }
 
-  Future<void> _tryDelete(int id, String name) async {
+  Future<void> _tryDelete(String id, String name) async {
     final count = await context.read<ProductRepository>().countByCategory(id);
     if (!mounted) return;
     if (count > 0) {

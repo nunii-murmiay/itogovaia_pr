@@ -108,7 +108,7 @@ class ProductFilterPanel extends StatelessWidget {
           children: [
             SizedBox(
               width: 200,
-              child: DropdownButtonFormField<int?>(
+              child: DropdownButtonFormField<String?>(
                 value: query.categoryId,
                 isExpanded: true,
                 decoration: const InputDecoration(
@@ -130,7 +130,7 @@ class ProductFilterPanel extends StatelessWidget {
             ),
             SizedBox(
               width: 200,
-              child: DropdownButtonFormField<int?>(
+              child: DropdownButtonFormField<String?>(
                 value: query.brandId,
                 isExpanded: true,
                 decoration: const InputDecoration(
@@ -152,7 +152,7 @@ class ProductFilterPanel extends StatelessWidget {
             ),
             SizedBox(
               width: 200,
-              child: DropdownButtonFormField<int?>(
+              child: DropdownButtonFormField<String?>(
                 value: query.supplierId,
                 isExpanded: true,
                 decoration: const InputDecoration(
